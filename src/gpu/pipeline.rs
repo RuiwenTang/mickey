@@ -6,6 +6,15 @@ pub(crate) struct Pipeline {
     pub(crate) pipelines: HashMap<wgpu::DepthStencilState, wgpu::RenderPipeline>,
 }
 
+impl Pipeline {
+    pub(crate) fn get_pipeline(
+        &self,
+        state: &wgpu::DepthStencilState,
+    ) -> Option<&wgpu::RenderPipeline> {
+        self.pipelines.get(state)
+    }
+}
+
 pub(crate) struct PipelineBuilder<'a> {
     format: wgpu::TextureFormat,
     groups: Vec<Vec<wgpu::BindGroupLayoutEntry>>,
@@ -35,6 +44,11 @@ impl<'a> PipelineBuilder<'a> {
 
     pub(crate) fn add_buffer(mut self, buffer: wgpu::VertexBufferLayout<'a>) -> Self {
         self.buffers.push(buffer);
+        self
+    }
+
+    pub(crate) fn with_states(mut self, state: Vec<wgpu::DepthStencilState>) -> Self {
+        self.states = state;
         self
     }
 
@@ -107,5 +121,184 @@ impl<'a> PipelineBuilder<'a> {
             layout: layout,
             pipelines: pipelins,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gpu::init_test_context;
+
+    #[test]
+    fn test_pipeline_builder() {
+        let (device, queue) = init_test_context();
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("test shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/solid_color.wgsl").into()),
+        });
+
+        let builder = PipelineBuilder::new();
+
+        let pipeline = builder
+            .with_format(wgpu::TextureFormat::Bgra8Unorm)
+            // buffer layout
+            .add_buffer(wgpu::VertexBufferLayout {
+                array_stride: 8,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &[wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x2,
+                }],
+            })
+            // group 0
+            .add_group(vec![wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(
+                        (std::mem::size_of::<nalgebra::Matrix4<f32>>() * 2) as wgpu::BufferAddress,
+                    ),
+                },
+                count: None,
+            }])
+            // group 1
+            .add_group(vec![wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(4 * 4),
+                },
+                count: None,
+            }])
+            .with_states(vec![
+                // for Convex Polygon no stencil test
+                wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth24PlusStencil8,
+                    depth_write_enabled: false,
+                    depth_compare: wgpu::CompareFunction::Never,
+                    stencil: wgpu::StencilState {
+                        front: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::Never,
+                            fail_op: wgpu::StencilOperation::Keep,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::Keep,
+                        },
+                        back: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::Never,
+                            fail_op: wgpu::StencilOperation::Keep,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::Keep,
+                        },
+                        read_mask: 0xff,
+                        write_mask: 0xff,
+                    },
+                    bias: Default::default(),
+                },
+                // for Stencil and Cover winding fill
+                wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth24PlusStencil8,
+                    depth_write_enabled: false,
+                    depth_compare: wgpu::CompareFunction::Never,
+                    stencil: wgpu::StencilState {
+                        front: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::NotEqual,
+                            fail_op: wgpu::StencilOperation::Keep,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::Replace,
+                        },
+                        back: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::NotEqual,
+                            fail_op: wgpu::StencilOperation::Keep,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::Replace,
+                        },
+                        read_mask: 0xff,
+                        write_mask: 0xff,
+                    },
+                    bias: Default::default(),
+                },
+                // for Stencil and Cover even-odd fill
+                wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth24PlusStencil8,
+                    depth_write_enabled: false,
+                    depth_compare: wgpu::CompareFunction::Never,
+                    stencil: wgpu::StencilState {
+                        front: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::NotEqual,
+                            fail_op: wgpu::StencilOperation::Replace,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::Replace,
+                        },
+                        back: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::NotEqual,
+                            fail_op: wgpu::StencilOperation::Replace,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::Replace,
+                        },
+                        read_mask: 0x01,
+                        write_mask: 0xff,
+                    },
+                    bias: Default::default(),
+                },
+            ])
+            .build(&shader, &device);
+
+        assert_eq!(pipeline.pipelines.len(), 3);
+
+        assert!(pipeline
+            .get_pipeline(&wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth24PlusStencil8,
+                depth_write_enabled: false,
+                depth_compare: wgpu::CompareFunction::Never,
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Never,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Keep,
+                    },
+                    back: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Never,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Keep,
+                    },
+                    read_mask: 0xff,
+                    write_mask: 0xff,
+                },
+                bias: Default::default(),
+            })
+            .is_some());
+
+        assert!(pipeline
+            .get_pipeline(&wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth24PlusStencil8,
+                depth_write_enabled: false,
+                depth_compare: wgpu::CompareFunction::Never,
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::NotEqual,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Replace,
+                    },
+                    back: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::NotEqual,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Replace,
+                    },
+                    read_mask: 0xff,
+                    write_mask: 0xff,
+                },
+                bias: Default::default(),
+            })
+            .is_some());
     }
 }
