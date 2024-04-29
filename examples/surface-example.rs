@@ -1,16 +1,18 @@
 mod common;
 
+use std::rc::Rc;
+
 use rskity::core::Surface as GPUSurface;
 use rskity::gpu::GPUContext;
 
 struct SurfaceExample {
-    context: GPUContext,
+    context: Rc<GPUContext>,
 }
 
 impl SurfaceExample {
     fn new() -> Self {
         Self {
-            context: GPUContext::new(),
+            context: Rc::new(GPUContext::new()),
         }
     }
 }
@@ -28,8 +30,9 @@ impl common::Renderer for SurfaceExample {
 
         let text = text.unwrap();
 
-        let surface = GPUSurface::new(&text.texture, false, device);
+        let mut surface = GPUSurface::new(&text.texture, false, device);
         surface.flush(
+            &mut self.context,
             device,
             queue,
             Some(wgpu::Color {

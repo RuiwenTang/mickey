@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_stage_buffer() {
-        let (device, _) = init_test_context();
+        let (device, queue) = init_test_context();
         let align = device.limits().min_uniform_buffer_offset_alignment as u64;
         let mut buffer = StageBuffer::new(&device);
 
@@ -92,10 +92,14 @@ mod tests {
         assert_eq!(range.start, 0);
         assert_eq!(range.end, 10);
 
-        let data = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let data = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
         let range = buffer.push_data_align(&data);
 
         assert_eq!(range.start, align);
-        assert_eq!(range.end, align + 10);
+        assert_eq!(range.end, align + 16);
+
+        let g_buffer = buffer.gen_gpu_buffer(&device, &queue);
+
+        assert_eq!(g_buffer.size(), align + 16);
     }
 }

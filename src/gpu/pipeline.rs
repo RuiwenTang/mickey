@@ -13,6 +13,10 @@ impl Pipeline {
     ) -> Option<&wgpu::RenderPipeline> {
         self.pipelines.get(state)
     }
+
+    pub(crate) fn get_group_layout(&self, slot: usize) -> Option<&wgpu::BindGroupLayout> {
+        self.groups.get(slot)
+    }
 }
 
 pub(crate) struct PipelineBuilder<'a> {
@@ -135,7 +139,9 @@ mod tests {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("test shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/solid_color.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("../render/shaders/solid_color.wgsl").into(),
+            ),
         });
 
         let builder = PipelineBuilder::new();
