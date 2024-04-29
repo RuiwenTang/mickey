@@ -6,19 +6,18 @@ use rskity::core::Surface as GPUSurface;
 use rskity::gpu::GPUContext;
 
 struct SurfaceExample {
-    context: Rc<GPUContext>,
+    context: Option<GPUContext>,
 }
 
 impl SurfaceExample {
     fn new() -> Self {
-        Self {
-            context: Rc::new(GPUContext::new()),
-        }
+        Self { context: None }
     }
 }
 
 impl common::Renderer for SurfaceExample {
     fn on_init(&mut self, format: wgpu::TextureFormat, device: &wgpu::Device, queue: &wgpu::Queue) {
+        self.context = Some(GPUContext::new(device));
     }
 
     fn on_render(&mut self, surface: &wgpu::Surface, device: &wgpu::Device, queue: &wgpu::Queue) {
@@ -32,7 +31,7 @@ impl common::Renderer for SurfaceExample {
 
         let mut surface = GPUSurface::new(&text.texture, false, device);
         surface.flush(
-            &mut self.context,
+            &mut self.context.as_mut().unwrap(),
             device,
             queue,
             Some(wgpu::Color {
@@ -48,6 +47,7 @@ impl common::Renderer for SurfaceExample {
 }
 
 fn main() {
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("debug"));
     let app = common::App::new("Surface Example", 800, 800);
     app.run(SurfaceExample::new());
 }

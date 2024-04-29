@@ -30,8 +30,8 @@ impl<'a> Command<'a> {
         pass.set_vertex_buffer(0, self.vertex_buffer.clone());
         pass.set_index_buffer(self.index_buffer.clone(), wgpu::IndexFormat::Uint32);
 
-        for group in &self.groups {
-            pass.set_bind_group(0, group, &[]);
+        for (i, group) in self.groups.iter().enumerate() {
+            pass.set_bind_group(i as u32, group, &[]);
         }
 
         pass.draw_indexed(0..self.draw_count, 0, 0..1);

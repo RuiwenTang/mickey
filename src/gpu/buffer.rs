@@ -69,7 +69,7 @@ impl StageBuffer {
 
         encoder.copy_buffer_to_buffer(&stage_buffer, 0, &buffer, 0, total_size);
 
-        queue.submit(Some(encoder.finish()));
+        queue.submit(vec![encoder.finish()]);
 
         return buffer;
     }

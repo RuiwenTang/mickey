@@ -6,11 +6,13 @@ use std::ops::Range;
 
 pub(crate) use command::CommandList;
 
-use crate::gpu::{buffer::StageBuffer, context::PipelineGenerater, pipeline::Pipeline, GPUContext};
+use crate::gpu::{buffer::StageBuffer, pipeline::Pipeline, GPUContext};
 
 use self::command::Command;
 
 pub(crate) trait Renderer {
+    fn pipeline_label(&self) -> &'static str;
+
     fn prepare(&mut self, buffer: &mut StageBuffer, device: &wgpu::Device, queue: &wgpu::Queue);
 
     fn render<'a>(
@@ -52,7 +54,8 @@ pub(crate) trait Fragment {
     ) -> Vec<wgpu::BindGroup>;
 }
 
-pub(crate) struct DummyRenderer<R: Raster, F: Fragment + PipelineGenerater> {
+pub(crate) struct DummyRenderer<R: Raster, F: Fragment> {
+    format: wgpu::TextureFormat,
     raster: R,
     fragment: F,
     vertex_range: Range<wgpu::BufferAddress>,
@@ -61,9 +64,10 @@ pub(crate) struct DummyRenderer<R: Raster, F: Fragment + PipelineGenerater> {
     draw_count: u32,
 }
 
-impl<R: Raster, F: Fragment + PipelineGenerater> DummyRenderer<R, F> {
-    pub(crate) fn new(raster: R, fragment: F) -> Self {
+impl<R: Raster, F: Fragment> DummyRenderer<R, F> {
+    pub(crate) fn new(format: wgpu::TextureFormat, raster: R, fragment: F) -> Self {
         Self {
+            format,
             raster,
             fragment,
             vertex_range: 0..0,
@@ -74,7 +78,11 @@ impl<R: Raster, F: Fragment + PipelineGenerater> DummyRenderer<R, F> {
     }
 }
 
-impl<R: Raster, F: Fragment + PipelineGenerater> Renderer for DummyRenderer<R, F> {
+impl<R: Raster, F: Fragment> Renderer for DummyRenderer<R, F> {
+    fn pipeline_label(&self) -> &'static str {
+        self.fragment.get_pipeline_name()
+    }
+
     fn prepare(&mut self, buffer: &mut StageBuffer, device: &wgpu::Device, queue: &wgpu::Queue) {
         let (vertex_range, index_range, vertex_mode, draw_count) = self.raster.rasterize(buffer);
         self.vertex_range = vertex_range;
@@ -91,7 +99,7 @@ impl<R: Raster, F: Fragment + PipelineGenerater> Renderer for DummyRenderer<R, F
         context: &'a GPUContext,
         device: &wgpu::Device,
     ) -> Vec<Command<'a>> {
-        let pipeline = context.get_pipeline(self.fragment.get_pipeline_name());
+        let pipeline = context.get_pipeline(self.fragment.get_pipeline_name(), self.format);
         if pipeline.is_none() {
             return vec![];
         }
@@ -103,16 +111,16 @@ impl<R: Raster, F: Fragment + PipelineGenerater> Renderer for DummyRenderer<R, F
         let state = wgpu::DepthStencilState {
             format: wgpu::TextureFormat::Depth24PlusStencil8,
             depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Never,
+            depth_compare: wgpu::CompareFunction::Always,
             stencil: wgpu::StencilState {
                 front: wgpu::StencilFaceState {
-                    compare: wgpu::CompareFunction::Never,
+                    compare: wgpu::CompareFunction::Always,
                     fail_op: wgpu::StencilOperation::Keep,
                     depth_fail_op: wgpu::StencilOperation::Keep,
                     pass_op: wgpu::StencilOperation::Keep,
                 },
                 back: wgpu::StencilFaceState {
-                    compare: wgpu::CompareFunction::Never,
+                    compare: wgpu::CompareFunction::Always,
                     fail_op: wgpu::StencilOperation::Keep,
                     depth_fail_op: wgpu::StencilOperation::Keep,
                     pass_op: wgpu::StencilOperation::Keep,

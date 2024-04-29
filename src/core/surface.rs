@@ -1,6 +1,10 @@
+use nalgebra::{Matrix4, Vector4};
+
 use crate::{
     gpu::{buffer::StageBuffer, GPUContext},
-    render::{command::Command, CommandList, Renderer},
+    render::{
+        fragment::SolidColorFragment, raster::DummyRaster, CommandList, DummyRenderer, Renderer,
+    },
 };
 
 /// A surface is a wrap around a wgpu::Texture. which can be used to render to.
@@ -52,7 +56,16 @@ impl<'a> Surface<'a> {
             None
         };
 
-        let renders: Vec<Box<dyn Renderer>> = vec![];
+        let renders: Vec<Box<dyn Renderer>> = vec![Box::new(DummyRenderer::new(
+            target.format(),
+            DummyRaster::new([100.0, 100.0, 300.0, 100.0, 200.0, 200.0]),
+            SolidColorFragment::new(
+                Vector4::new(1.0, 0.0, 0.0, 1.0),
+                width as f32,
+                height as f32,
+                Matrix4::identity(),
+            ),
+        ))];
 
         Surface {
             target,
@@ -65,7 +78,7 @@ impl<'a> Surface<'a> {
 
     pub fn flush(
         &mut self,
-        context: &'a GPUContext,
+        context: &'a mut GPUContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         clear_color: Option<wgpu::Color>,
@@ -78,9 +91,13 @@ impl<'a> Surface<'a> {
 
         let mut stage_buffer = StageBuffer::new(device);
 
-        let mut c = GPUContext::new();
-
         for render in &mut self.renders {
+            context.load_pipeline(
+                render.as_ref().pipeline_label(),
+                self.target.format(),
+                device,
+            );
+
             render.as_mut().prepare(&mut stage_buffer, device, queue);
         }
 
