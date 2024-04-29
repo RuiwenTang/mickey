@@ -1,5 +1,5 @@
 use winit::{
-    dpi::{PhysicalSize, Size},
+    dpi::{LogicalSize, Size},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
@@ -31,9 +31,9 @@ impl App {
         let wb = WindowBuilder::new();
         let window = wb
             .with_title(self.title)
-            .with_max_inner_size(Size::Physical(PhysicalSize {
-                width: self.width,
-                height: self.height,
+            .with_inner_size(Size::Logical(LogicalSize {
+                width: self.width as f64,
+                height: self.height as f64,
             }))
             .build(&el)
             .unwrap();

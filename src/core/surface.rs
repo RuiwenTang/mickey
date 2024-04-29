@@ -22,8 +22,8 @@ impl<'a> Surface<'a> {
             sample_count: if anti_alias { 4 } else { 1 },
             dimension: wgpu::TextureDimension::D2,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Depth32FloatStencil8,
-            view_formats: &[wgpu::TextureFormat::Depth32FloatStencil8],
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            view_formats: &[wgpu::TextureFormat::Depth24PlusStencil8],
         });
 
         let msaa_texture = if anti_alias {
@@ -110,32 +110,62 @@ impl<'a> Surface<'a> {
         encoder: &'a mut wgpu::CommandEncoder,
         clear_color: Option<wgpu::Color>,
     ) -> wgpu::RenderPass<'a> {
-        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("OnScreen render pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &target,
-                resolve_target: msaa.clone(),
-                ops: wgpu::Operations {
-                    load: match clear_color {
-                        Some(clear_color) => wgpu::LoadOp::Clear(clear_color),
-                        None => wgpu::LoadOp::Load,
+        if self.anti_alias {
+            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("OnScreen render pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: msaa.unwrap(),
+                    resolve_target: Some(&target),
+                    ops: wgpu::Operations {
+                        load: match clear_color {
+                            Some(clear_color) => wgpu::LoadOp::Clear(clear_color),
+                            None => wgpu::LoadOp::Load,
+                        },
+                        store: wgpu::StoreOp::Store,
                     },
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &depth_stencil,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(0.0),
-                    store: wgpu::StoreOp::Discard,
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &depth_stencil,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
                 }),
-                stencil_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(0),
-                    store: wgpu::StoreOp::Discard,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            })
+        } else {
+            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("OnScreen render pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &target,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: match clear_color {
+                            Some(clear_color) => wgpu::LoadOp::Clear(clear_color),
+                            None => wgpu::LoadOp::Load,
+                        },
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &depth_stencil,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
                 }),
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        })
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            })
+        }
     }
 }
