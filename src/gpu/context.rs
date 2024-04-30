@@ -5,8 +5,6 @@ use crate::render::fragment::ColorPipelineGenerator;
 use super::pipeline::Pipeline;
 
 pub(crate) trait PipelineGenerater {
-    fn label(&self) -> &'static str;
-
     fn gen_pipeline(
         &self,
         format: wgpu::TextureFormat,
@@ -73,6 +71,11 @@ impl GPUContext {
             ColorPipelineGenerator::solid_color_pipeline(device),
         );
 
+        generator.insert(
+            "NonColor",
+            ColorPipelineGenerator::non_color_pipeline(device),
+        );
+
         Self {
             pipelines: HashMap::new(),
             generator,
@@ -129,7 +132,10 @@ impl GPUContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gpu::init_test_context;
+    use crate::{
+        gpu::init_test_context,
+        render::fragment::{NON_COLOR_PIPELINE_NAME, SOLID_PIPELINE_NAME},
+    };
 
     #[test]
     fn test_context() {
@@ -138,17 +144,31 @@ mod tests {
         let mut ctx = GPUContext::new(&device);
 
         ctx.load_pipeline(
-            "SolidColor",
+            SOLID_PIPELINE_NAME,
+            wgpu::TextureFormat::Rgba8Unorm,
+            false,
+            &device,
+        );
+        ctx.load_pipeline(
+            NON_COLOR_PIPELINE_NAME,
             wgpu::TextureFormat::Rgba8Unorm,
             false,
             &device,
         );
 
         assert!(ctx
-            .get_pipeline("SolidColor", wgpu::TextureFormat::Bgra8Unorm, false)
+            .get_pipeline(SOLID_PIPELINE_NAME, wgpu::TextureFormat::Bgra8Unorm, false)
             .is_none());
         assert!(ctx
-            .get_pipeline("SolidColor", wgpu::TextureFormat::Rgba8Unorm, false)
+            .get_pipeline(SOLID_PIPELINE_NAME, wgpu::TextureFormat::Rgba8Unorm, false)
+            .is_some());
+
+        assert!(ctx
+            .get_pipeline(
+                NON_COLOR_PIPELINE_NAME,
+                wgpu::TextureFormat::Rgba8Unorm,
+                false
+            )
             .is_some());
     }
 }

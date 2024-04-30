@@ -10,6 +10,9 @@ use crate::gpu::{
 
 use super::Fragment;
 
+pub(crate) const SOLID_PIPELINE_NAME: &str = "SolidColor";
+pub(crate) const NON_COLOR_PIPELINE_NAME: &str = "NonColor";
+
 struct TransformGroup {
     mvp: Matrix4<f32>,
     transform: Matrix4<f32>,
@@ -64,7 +67,7 @@ impl SolidColorFragment {
 
 impl Fragment for SolidColorFragment {
     fn get_pipeline_name(&self) -> &'static str {
-        "SolidColor"
+        SOLID_PIPELINE_NAME
     }
 
     fn prepare(&mut self, buffer: &mut StageBuffer, _device: &wgpu::Device, _queue: &wgpu::Queue) {
@@ -123,12 +126,40 @@ impl Fragment for SolidColorFragment {
             }),
         ]
     }
+
+    fn gen_common_bind_groups<'a>(
+        &self,
+        device: &wgpu::Device,
+        buffer: &'a wgpu::Buffer,
+        pipeline: &'a Pipeline,
+    ) -> wgpu::BindGroup {
+        let group0_layout = pipeline
+            .get_group_layout(0)
+            .expect("common group at slot 0 can not be get!");
+
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("NonColor Common Group"),
+            layout: &group0_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: buffer,
+                    offset: self.transform.get_buffer_range().start,
+                    size: wgpu::BufferSize::new(
+                        self.transform.get_buffer_range().end
+                            - self.transform.get_buffer_range().start,
+                    ),
+                }),
+            }],
+        })
+    }
 }
 
 pub(crate) struct ColorPipelineGenerator {
-    label: &'static str,
+    color_writable: bool,
     shader: wgpu::ShaderModule,
     states: Vec<wgpu::DepthStencilState>,
+    groups: Vec<Vec<wgpu::BindGroupLayoutEntry>>,
 }
 
 impl ColorPipelineGenerator {
@@ -138,7 +169,7 @@ impl ColorPipelineGenerator {
             source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/solid_color.wgsl").into()),
         });
         Box::new(ColorPipelineGenerator {
-            label: "SolidShader",
+            color_writable: true,
             shader,
             states: vec![
                 // for Convex Polygon no stencil test
@@ -211,26 +242,107 @@ impl ColorPipelineGenerator {
                     bias: Default::default(),
                 },
             ],
+            groups: vec![
+                // group 0
+                vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(
+                            (std::mem::size_of::<nalgebra::Matrix4<f32>>() * 2 + 16)
+                                as wgpu::BufferAddress,
+                        ),
+                    },
+                    count: None,
+                }],
+                // group 1
+                vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(4 * 4),
+                    },
+                    count: None,
+                }],
+            ],
+        })
+    }
+
+    pub(crate) fn non_color_pipeline(device: &wgpu::Device) -> Box<dyn PipelineGenerater> {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Non Color shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/non_color.wgsl").into()),
+        });
+
+        Box::new(ColorPipelineGenerator {
+            color_writable: false,
+            shader,
+            states: vec![
+                // for Complex Polygon stencil mask
+                wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth24PlusStencil8,
+                    depth_write_enabled: false,
+                    depth_compare: wgpu::CompareFunction::Always,
+                    stencil: wgpu::StencilState {
+                        front: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::Always,
+                            fail_op: wgpu::StencilOperation::Keep,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::IncrementWrap,
+                        },
+                        back: wgpu::StencilFaceState {
+                            compare: wgpu::CompareFunction::Always,
+                            fail_op: wgpu::StencilOperation::Keep,
+                            depth_fail_op: wgpu::StencilOperation::Keep,
+                            pass_op: wgpu::StencilOperation::DecrementWrap,
+                        },
+                        read_mask: 0xff,
+                        write_mask: 0xff,
+                    },
+                    bias: Default::default(),
+                },
+            ],
+            groups: vec![
+                // group 0
+                vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(
+                            (std::mem::size_of::<nalgebra::Matrix4<f32>>() * 2 + 16)
+                                as wgpu::BufferAddress,
+                        ),
+                    },
+                    count: None,
+                }],
+            ],
         })
     }
 }
 
 impl PipelineGenerater for ColorPipelineGenerator {
-    fn label(&self) -> &'static str {
-        return self.label;
-    }
-
     fn gen_pipeline(
         &self,
         format: wgpu::TextureFormat,
         sample_count: u32,
         device: &wgpu::Device,
     ) -> Pipeline {
-        let builder = PipelineBuilder::new();
+        let mut builder = PipelineBuilder::new();
+
+        for group in &self.groups {
+            builder = builder.add_group(group.clone());
+        }
 
         return builder
             .with_format(format)
             .with_sample_count(sample_count)
+            .with_color_writable(self.color_writable)
             .add_buffer(wgpu::VertexBufferLayout {
                 array_stride: 8,
                 step_mode: wgpu::VertexStepMode::Vertex,
@@ -240,31 +352,6 @@ impl PipelineGenerater for ColorPipelineGenerator {
                     format: wgpu::VertexFormat::Float32x2,
                 }],
             })
-            // group 0
-            .add_group(vec![wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: wgpu::BufferSize::new(
-                        (std::mem::size_of::<nalgebra::Matrix4<f32>>() * 2 + 16)
-                            as wgpu::BufferAddress,
-                    ),
-                },
-                count: None,
-            }])
-            // group 1
-            .add_group(vec![wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: wgpu::BufferSize::new(4 * 4),
-                },
-                count: None,
-            }])
             .with_states(self.states.clone())
             .build(&self.shader, device);
     }

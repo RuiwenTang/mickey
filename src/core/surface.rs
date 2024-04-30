@@ -1,11 +1,15 @@
-use nalgebra::{Matrix4, Vector4};
+use nalgebra::{Matrix4, Vector3, Vector4};
 
 use crate::{
     gpu::{buffer::StageBuffer, GPUContext},
     render::{
-        fragment::SolidColorFragment, raster::DummyRaster, CommandList, DummyRenderer, Renderer,
+        fragment::{SolidColorFragment, NON_COLOR_PIPELINE_NAME},
+        raster::PathFillRaster,
+        CommandList, PathRenderer, Renderer,
     },
 };
+
+use super::{path::PathFillType, Path};
 
 /// A surface is a wrap around a wgpu::Texture. which can be used to render contents.
 pub struct Surface<'a> {
@@ -17,6 +21,17 @@ pub struct Surface<'a> {
     logical_height: f32,
 
     renders: Vec<Box<dyn Renderer>>,
+}
+
+fn gen_path(fill_type: PathFillType) -> Path {
+    let path = Path::new(fill_type);
+
+    path.move_to(100.0, 10.0)
+        .line_to(40.0, 180.0)
+        .line_to(190.0, 60.0)
+        .line_to(10.0, 60.0)
+        .line_to(160.0, 180.0)
+        .close()
 }
 
 impl<'a> Surface<'a> {
@@ -73,17 +88,30 @@ impl<'a> Surface<'a> {
             None
         };
 
-        let renders: Vec<Box<dyn Renderer>> = vec![Box::new(DummyRenderer::new(
-            target.format(),
-            anti_alias,
-            DummyRaster::new([100.0, 100.0, 300.0, 110.0, 200.0, 200.0]),
-            SolidColorFragment::new(
-                Vector4::new(1.0, 0.0, 0.0, 1.0),
-                logical_width,
-                logical_height,
-                Matrix4::identity(),
-            ),
-        ))];
+        let renders: Vec<Box<dyn Renderer>> = vec![
+            Box::new(PathRenderer::new(
+                target.format(),
+                anti_alias,
+                PathFillRaster::new(gen_path(PathFillType::Winding)),
+                SolidColorFragment::new(
+                    Vector4::new(1.0, 0.0, 0.0, 0.5),
+                    logical_width,
+                    logical_height,
+                    Matrix4::identity(),
+                ),
+            )),
+            Box::new(PathRenderer::new(
+                target.format(),
+                anti_alias,
+                PathFillRaster::new(gen_path(PathFillType::EvenOdd)),
+                SolidColorFragment::new(
+                    Vector4::new(1.0, 0.0, 0.0, 0.5),
+                    logical_width,
+                    logical_height,
+                    Matrix4::new_translation(&Vector3::new(200.0, 0.0, 0.0)),
+                ),
+            )),
+        ];
 
         Surface {
             target,
@@ -118,6 +146,14 @@ impl<'a> Surface<'a> {
         let (target_view, depth_stencil_view, msaa_view) = self.get_views();
 
         let mut stage_buffer = StageBuffer::new(device);
+
+        // load non color pipeline before visit all renders.
+        context.load_pipeline(
+            NON_COLOR_PIPELINE_NAME,
+            self.target.format(),
+            self.anti_alias,
+            device,
+        );
 
         for render in &mut self.renders {
             context.load_pipeline(

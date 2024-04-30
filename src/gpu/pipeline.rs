@@ -22,6 +22,7 @@ impl Pipeline {
 pub(crate) struct PipelineBuilder<'a> {
     format: wgpu::TextureFormat,
     sample_count: u32,
+    color_writable: bool,
     groups: Vec<Vec<wgpu::BindGroupLayoutEntry>>,
     buffers: Vec<wgpu::VertexBufferLayout<'a>>,
     states: Vec<wgpu::DepthStencilState>,
@@ -32,6 +33,7 @@ impl<'a> PipelineBuilder<'a> {
         PipelineBuilder {
             format: wgpu::TextureFormat::Bgra8Unorm,
             sample_count: 1,
+            color_writable: true,
             groups: vec![],
             buffers: vec![],
             states: vec![],
@@ -45,6 +47,11 @@ impl<'a> PipelineBuilder<'a> {
 
     pub(crate) fn with_sample_count(mut self, count: u32) -> Self {
         self.sample_count = count;
+        self
+    }
+
+    pub(crate) fn with_color_writable(mut self, writable: bool) -> Self {
+        self.color_writable = writable;
         self
     }
 
@@ -64,6 +71,31 @@ impl<'a> PipelineBuilder<'a> {
     }
 
     pub(crate) fn build(&self, shader: &wgpu::ShaderModule, device: &wgpu::Device) -> Pipeline {
+        let color_target = if self.color_writable {
+            wgpu::ColorTargetState {
+                format: self.format,
+                blend: Some(wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                }),
+                write_mask: wgpu::ColorWrites::ALL,
+            }
+        } else {
+            wgpu::ColorTargetState {
+                format: self.format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::empty(),
+            }
+        };
+
         let bind_groups: Vec<wgpu::BindGroupLayout> = self
             .groups
             .iter()
@@ -115,22 +147,7 @@ impl<'a> PipelineBuilder<'a> {
                         fragment: Some(wgpu::FragmentState {
                             module: shader,
                             entry_point: "fs_main",
-                            targets: &[Some(wgpu::ColorTargetState {
-                                format: self.format,
-                                blend: Some(wgpu::BlendState {
-                                    color: wgpu::BlendComponent {
-                                        src_factor: wgpu::BlendFactor::One,
-                                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                        operation: wgpu::BlendOperation::Add,
-                                    },
-                                    alpha: wgpu::BlendComponent {
-                                        src_factor: wgpu::BlendFactor::One,
-                                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                        operation: wgpu::BlendOperation::Add,
-                                    },
-                                }),
-                                write_mask: wgpu::ColorWrites::ALL,
-                            })],
+                            targets: &[Some(color_target.clone())],
                         }),
                         multiview: None,
                     }),
