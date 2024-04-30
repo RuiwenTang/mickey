@@ -220,11 +220,17 @@ impl PipelineGenerater for ColorPipelineGenerator {
         return self.label;
     }
 
-    fn gen_pipeline(&self, format: wgpu::TextureFormat, device: &wgpu::Device) -> Pipeline {
+    fn gen_pipeline(
+        &self,
+        format: wgpu::TextureFormat,
+        sample_count: u32,
+        device: &wgpu::Device,
+    ) -> Pipeline {
         let builder = PipelineBuilder::new();
 
         return builder
             .with_format(format)
+            .with_sample_count(sample_count)
             .add_buffer(wgpu::VertexBufferLayout {
                 array_stride: 8,
                 step_mode: wgpu::VertexStepMode::Vertex,

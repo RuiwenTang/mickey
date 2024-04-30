@@ -56,6 +56,7 @@ pub(crate) trait Fragment {
 
 pub(crate) struct DummyRenderer<R: Raster, F: Fragment> {
     format: wgpu::TextureFormat,
+    anti_alias: bool,
     raster: R,
     fragment: F,
     vertex_range: Range<wgpu::BufferAddress>,
@@ -65,9 +66,15 @@ pub(crate) struct DummyRenderer<R: Raster, F: Fragment> {
 }
 
 impl<R: Raster, F: Fragment> DummyRenderer<R, F> {
-    pub(crate) fn new(format: wgpu::TextureFormat, raster: R, fragment: F) -> Self {
+    pub(crate) fn new(
+        format: wgpu::TextureFormat,
+        anti_alias: bool,
+        raster: R,
+        fragment: F,
+    ) -> Self {
         Self {
             format,
+            anti_alias,
             raster,
             fragment,
             vertex_range: 0..0,
@@ -99,7 +106,11 @@ impl<R: Raster, F: Fragment> Renderer for DummyRenderer<R, F> {
         context: &'a GPUContext,
         device: &wgpu::Device,
     ) -> Vec<Command<'a>> {
-        let pipeline = context.get_pipeline(self.fragment.get_pipeline_name(), self.format);
+        let pipeline = context.get_pipeline(
+            self.fragment.get_pipeline_name(),
+            self.format,
+            self.anti_alias,
+        );
         if pipeline.is_none() {
             return vec![];
         }

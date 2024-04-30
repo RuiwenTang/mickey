@@ -7,18 +7,35 @@ use crate::{
     },
 };
 
-/// A surface is a wrap around a wgpu::Texture. which can be used to render to.
+/// A surface is a wrap around a wgpu::Texture. which can be used to render contents.
 pub struct Surface<'a> {
     target: &'a wgpu::Texture,
     anti_alias: bool,
     depth_stencil: wgpu::Texture,
     msaa_texture: Option<wgpu::Texture>,
+    logical_width: f32,
+    logical_height: f32,
 
     renders: Vec<Box<dyn Renderer>>,
 }
 
 impl<'a> Surface<'a> {
-    pub fn new(target: &'a wgpu::Texture, anti_alias: bool, device: &wgpu::Device) -> Self {
+    /// Wrap a wgpu::Texture to a surface.
+    ///
+    /// # Arguments
+    ///
+    /// * `target` - The wgpu::Texture to be wrapped.
+    /// * `logical_width` - The width of the surface in logical it can be different from actually texture size.
+    /// * `logical_height` - The height of the surface in logical it can be different from actually texture size.
+    /// * `anti_alias` - Whether to use anti-alias we provide msaa with sample count 4.
+    /// * `device` - The wgpu::Device used to create other GPU resources.
+    pub fn new(
+        target: &'a wgpu::Texture,
+        logical_width: f32,
+        logical_height: f32,
+        anti_alias: bool,
+        device: &wgpu::Device,
+    ) -> Self {
         let width = target.width();
         let height = target.height();
 
@@ -58,11 +75,12 @@ impl<'a> Surface<'a> {
 
         let renders: Vec<Box<dyn Renderer>> = vec![Box::new(DummyRenderer::new(
             target.format(),
-            DummyRaster::new([100.0, 100.0, 300.0, 100.0, 200.0, 200.0]),
+            anti_alias,
+            DummyRaster::new([100.0, 100.0, 300.0, 110.0, 200.0, 200.0]),
             SolidColorFragment::new(
                 Vector4::new(1.0, 0.0, 0.0, 1.0),
-                width as f32,
-                height as f32,
+                logical_width,
+                logical_height,
                 Matrix4::identity(),
             ),
         ))];
@@ -72,10 +90,20 @@ impl<'a> Surface<'a> {
             anti_alias,
             depth_stencil,
             msaa_texture,
+            logical_width,
+            logical_height,
             renders,
         }
     }
 
+    /// Flush the surface to the target texture.
+    ///
+    /// # Arguments
+    ///
+    /// * `context` - The GPU context used to create pipelines and other resources.
+    /// * `device` - The wgpu::Device used to create other GPU resources.
+    /// * `queue` - The wgpu::Queue used to submit commands.
+    /// * `clear_color` - The color to clear the target texture. If pass `None`, the target texture will load into inner RenderPass.
     pub fn flush(
         &mut self,
         context: &'a mut GPUContext,
@@ -95,6 +123,7 @@ impl<'a> Surface<'a> {
             context.load_pipeline(
                 render.as_ref().pipeline_label(),
                 self.target.format(),
+                self.anti_alias,
                 device,
             );
 

@@ -32,7 +32,7 @@ impl common::Renderer for SurfaceExample {
 
         let text = text.unwrap();
 
-        let mut surface = GPUSurface::new(&text.texture, false, device);
+        let mut surface = GPUSurface::new(&text.texture, 800.0, 800.0, true, device);
         surface.flush(
             &mut self.context.as_mut().unwrap(),
             device,
@@ -40,7 +40,7 @@ impl common::Renderer for SurfaceExample {
             Some(wgpu::Color {
                 r: 1.0,
                 g: 1.0,
-                b: 0.0,
+                b: 1.0,
                 a: 1.0,
             }),
         );

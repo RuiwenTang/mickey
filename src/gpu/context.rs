@@ -7,18 +7,25 @@ use super::pipeline::Pipeline;
 pub(crate) trait PipelineGenerater {
     fn label(&self) -> &'static str;
 
-    fn gen_pipeline(&self, format: wgpu::TextureFormat, device: &wgpu::Device) -> Pipeline;
+    fn gen_pipeline(
+        &self,
+        format: wgpu::TextureFormat,
+        sample_count: u32,
+        device: &wgpu::Device,
+    ) -> Pipeline;
 }
 
 struct PipelineNode {
     format: wgpu::TextureFormat,
+    sample_count: u32,
     pipelines: HashMap<&'static str, Pipeline>,
 }
 
 impl PipelineNode {
-    pub(crate) fn new(format: wgpu::TextureFormat) -> Self {
+    pub(crate) fn new(format: wgpu::TextureFormat, sample_count: u32) -> Self {
         PipelineNode {
             format,
+            sample_count,
             pipelines: HashMap::new(),
         }
     }
@@ -33,8 +40,10 @@ impl PipelineNode {
             return;
         }
 
-        self.pipelines
-            .insert(label, generator.gen_pipeline(self.format, device));
+        self.pipelines.insert(
+            label,
+            generator.gen_pipeline(self.format, self.sample_count, device),
+        );
     }
 
     pub(crate) fn get_pipeline(&self, label: &'static str) -> Option<&Pipeline> {
@@ -42,9 +51,15 @@ impl PipelineNode {
     }
 }
 
-/// GPU context for holding pipelines created by engine
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub(crate) struct PipelineKey {
+    format: wgpu::TextureFormat,
+    sample_count: u32,
+}
+
+/// GPU context for holding pipelines created by engine. Only one context is needed.
 pub struct GPUContext {
-    pipelines: HashMap<wgpu::TextureFormat, PipelineNode>,
+    pipelines: HashMap<PipelineKey, PipelineNode>,
 
     generator: HashMap<&'static str, Box<dyn PipelineGenerater>>,
 }
@@ -68,6 +83,7 @@ impl GPUContext {
         &mut self,
         label: &'static str,
         format: wgpu::TextureFormat,
+        anti_aliasing: bool,
         device: &wgpu::Device,
     ) {
         let pg = self.generator.get(label);
@@ -80,8 +96,11 @@ impl GPUContext {
 
         let p = self
             .pipelines
-            .entry(format)
-            .or_insert(PipelineNode::new(format));
+            .entry(PipelineKey {
+                format,
+                sample_count: if anti_aliasing { 4 } else { 1 },
+            })
+            .or_insert(PipelineNode::new(format, if anti_aliasing { 4 } else { 1 }));
 
         p.load_pipeline(label, pg, device);
     }
@@ -90,8 +109,12 @@ impl GPUContext {
         &self,
         label: &'static str,
         format: wgpu::TextureFormat,
+        anti_alias: bool,
     ) -> Option<&Pipeline> {
-        let node = self.pipelines.get(&format);
+        let node = self.pipelines.get(&PipelineKey {
+            format,
+            sample_count: if anti_alias { 4 } else { 1 },
+        });
 
         if node.is_none() {
             return None;
@@ -114,13 +137,18 @@ mod tests {
 
         let mut ctx = GPUContext::new(&device);
 
-        ctx.load_pipeline("SolidColor", wgpu::TextureFormat::Rgba8Unorm, &device);
+        ctx.load_pipeline(
+            "SolidColor",
+            wgpu::TextureFormat::Rgba8Unorm,
+            false,
+            &device,
+        );
 
         assert!(ctx
-            .get_pipeline("SolidColor", wgpu::TextureFormat::Bgra8Unorm)
+            .get_pipeline("SolidColor", wgpu::TextureFormat::Bgra8Unorm, false)
             .is_none());
         assert!(ctx
-            .get_pipeline("SolidColor", wgpu::TextureFormat::Rgba8Unorm)
+            .get_pipeline("SolidColor", wgpu::TextureFormat::Rgba8Unorm, false)
             .is_some());
     }
 }

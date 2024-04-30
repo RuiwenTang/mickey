@@ -21,6 +21,7 @@ impl Pipeline {
 
 pub(crate) struct PipelineBuilder<'a> {
     format: wgpu::TextureFormat,
+    sample_count: u32,
     groups: Vec<Vec<wgpu::BindGroupLayoutEntry>>,
     buffers: Vec<wgpu::VertexBufferLayout<'a>>,
     states: Vec<wgpu::DepthStencilState>,
@@ -30,6 +31,7 @@ impl<'a> PipelineBuilder<'a> {
     pub(crate) fn new() -> Self {
         PipelineBuilder {
             format: wgpu::TextureFormat::Bgra8Unorm,
+            sample_count: 1,
             groups: vec![],
             buffers: vec![],
             states: vec![],
@@ -38,6 +40,11 @@ impl<'a> PipelineBuilder<'a> {
 
     pub(crate) fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
         self.format = format;
+        self
+    }
+
+    pub(crate) fn with_sample_count(mut self, count: u32) -> Self {
+        self.sample_count = count;
         self
     }
 
@@ -101,7 +108,7 @@ impl<'a> PipelineBuilder<'a> {
                         },
                         depth_stencil: Some(s.clone()),
                         multisample: wgpu::MultisampleState {
-                            count: 1,
+                            count: self.sample_count,
                             mask: !0,
                             alpha_to_coverage_enabled: false,
                         },
