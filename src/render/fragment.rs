@@ -31,8 +31,11 @@ impl TransformGroup {
         }
     }
 
-    fn prepare(&mut self, buffer: &mut StageBuffer) {
+    fn prepare(&mut self, depth: f32, buffer: &mut StageBuffer) {
         let mut transform = smallvec::SmallVec::<[f32; 36]>::new();
+
+        self.info[0] = depth;
+
         transform.extend_from_slice(self.mvp.as_slice());
         transform.extend_from_slice(self.transform.as_slice());
         transform.extend_from_slice(self.info.as_slice());
@@ -70,8 +73,14 @@ impl Fragment for SolidColorFragment {
         SOLID_PIPELINE_NAME
     }
 
-    fn prepare(&mut self, buffer: &mut StageBuffer, _device: &wgpu::Device, _queue: &wgpu::Queue) {
-        self.transform.prepare(buffer);
+    fn prepare(
+        &mut self,
+        depth: f32,
+        buffer: &mut StageBuffer,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+    ) {
+        self.transform.prepare(depth, buffer);
 
         self.color_range = buffer.push_data_align(bytemuck::cast_slice(self.color.as_slice()));
     }
@@ -176,7 +185,7 @@ impl ColorPipelineGenerator {
                 wgpu::DepthStencilState {
                     format: wgpu::TextureFormat::Depth24PlusStencil8,
                     depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Always,
+                    depth_compare: wgpu::CompareFunction::Greater,
                     stencil: wgpu::StencilState {
                         front: wgpu::StencilFaceState {
                             compare: wgpu::CompareFunction::Always,
@@ -199,7 +208,7 @@ impl ColorPipelineGenerator {
                 wgpu::DepthStencilState {
                     format: wgpu::TextureFormat::Depth24PlusStencil8,
                     depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Always,
+                    depth_compare: wgpu::CompareFunction::Greater,
                     stencil: wgpu::StencilState {
                         front: wgpu::StencilFaceState {
                             compare: wgpu::CompareFunction::NotEqual,
@@ -222,7 +231,7 @@ impl ColorPipelineGenerator {
                 wgpu::DepthStencilState {
                     format: wgpu::TextureFormat::Depth24PlusStencil8,
                     depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Always,
+                    depth_compare: wgpu::CompareFunction::Greater,
                     stencil: wgpu::StencilState {
                         front: wgpu::StencilFaceState {
                             compare: wgpu::CompareFunction::NotEqual,
@@ -286,7 +295,7 @@ impl ColorPipelineGenerator {
                 wgpu::DepthStencilState {
                     format: wgpu::TextureFormat::Depth24PlusStencil8,
                     depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Always,
+                    depth_compare: wgpu::CompareFunction::Greater,
                     stencil: wgpu::StencilState {
                         front: wgpu::StencilFaceState {
                             compare: wgpu::CompareFunction::Always,

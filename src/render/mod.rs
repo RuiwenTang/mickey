@@ -13,7 +13,13 @@ use self::{command::Command, fragment::NON_COLOR_PIPELINE_NAME};
 pub(crate) trait Renderer {
     fn pipeline_label(&self) -> &'static str;
 
-    fn prepare(&mut self, buffer: &mut StageBuffer, device: &wgpu::Device, queue: &wgpu::Queue);
+    fn prepare(
+        &mut self,
+        total_depth: f32,
+        buffer: &mut StageBuffer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    );
 
     fn render<'a>(
         &self,
@@ -45,7 +51,13 @@ pub(crate) trait Raster {
 pub(crate) trait Fragment {
     fn get_pipeline_name(&self) -> &'static str;
 
-    fn prepare(&mut self, buffer: &mut StageBuffer, device: &wgpu::Device, queue: &wgpu::Queue);
+    fn prepare(
+        &mut self,
+        depth: f32,
+        buffer: &mut StageBuffer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    );
 
     fn gen_bind_groups<'a>(
         &self,
@@ -67,6 +79,7 @@ pub(crate) struct PathRenderer<R: Raster, F: Fragment> {
     anti_alias: bool,
     raster: R,
     fragment: F,
+    depth: f32,
     vertex_range: Range<wgpu::BufferAddress>,
     index_range: Range<wgpu::BufferAddress>,
     vertex_mode: VertexMode,
@@ -79,12 +92,14 @@ impl<R: Raster, F: Fragment> PathRenderer<R, F> {
         anti_alias: bool,
         raster: R,
         fragment: F,
+        depth: f32,
     ) -> Self {
         Self {
             format,
             anti_alias,
             raster,
             fragment,
+            depth,
             vertex_range: 0..0,
             index_range: 0..0,
             vertex_mode: VertexMode::Convex,
@@ -109,7 +124,7 @@ impl<R: Raster, F: Fragment> PathRenderer<R, F> {
         let state = wgpu::DepthStencilState {
             format: wgpu::TextureFormat::Depth24PlusStencil8,
             depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
+            depth_compare: wgpu::CompareFunction::Greater,
             stencil: wgpu::StencilState {
                 front: wgpu::StencilFaceState {
                     compare: wgpu::CompareFunction::Always,
@@ -147,7 +162,7 @@ impl<R: Raster, F: Fragment> PathRenderer<R, F> {
             wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth24PlusStencil8,
                 depth_write_enabled: false,
-                depth_compare: wgpu::CompareFunction::Always,
+                depth_compare: wgpu::CompareFunction::Greater,
                 stencil: wgpu::StencilState {
                     front: wgpu::StencilFaceState {
                         compare: wgpu::CompareFunction::Always,
@@ -170,7 +185,7 @@ impl<R: Raster, F: Fragment> PathRenderer<R, F> {
             wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth24PlusStencil8,
                 depth_write_enabled: false,
-                depth_compare: wgpu::CompareFunction::Always,
+                depth_compare: wgpu::CompareFunction::Greater,
                 stencil: wgpu::StencilState {
                     front: wgpu::StencilFaceState {
                         compare: wgpu::CompareFunction::NotEqual,
@@ -193,7 +208,7 @@ impl<R: Raster, F: Fragment> PathRenderer<R, F> {
             wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth24PlusStencil8,
                 depth_write_enabled: false,
-                depth_compare: wgpu::CompareFunction::Always,
+                depth_compare: wgpu::CompareFunction::Greater,
                 stencil: wgpu::StencilState {
                     front: wgpu::StencilFaceState {
                         compare: wgpu::CompareFunction::NotEqual,
@@ -221,14 +236,21 @@ impl<R: Raster, F: Fragment> Renderer for PathRenderer<R, F> {
         self.fragment.get_pipeline_name()
     }
 
-    fn prepare(&mut self, buffer: &mut StageBuffer, device: &wgpu::Device, queue: &wgpu::Queue) {
+    fn prepare(
+        &mut self,
+        total_depth: f32,
+        buffer: &mut StageBuffer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) {
         let (vertex_range, index_range, vertex_mode, draw_count) = self.raster.rasterize(buffer);
         self.vertex_range = vertex_range;
         self.index_range = index_range;
         self.vertex_mode = vertex_mode;
         self.draw_count = draw_count;
 
-        self.fragment.prepare(buffer, device, queue);
+        self.fragment
+            .prepare(self.depth / total_depth, buffer, device, queue);
     }
 
     fn render<'a>(

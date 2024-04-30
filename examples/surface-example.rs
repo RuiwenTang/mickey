@@ -1,15 +1,20 @@
 mod common;
 
 use rskity::core::Surface as GPUSurface;
+use rskity::core::{Path, PathFillType, Picture};
 use rskity::gpu::GPUContext;
 
 struct SurfaceExample {
     context: Option<GPUContext>,
+    picture: Picture,
 }
 
 impl SurfaceExample {
     fn new() -> Self {
-        Self { context: None }
+        Self {
+            context: None,
+            picture: Picture::new(),
+        }
     }
 }
 
@@ -21,6 +26,16 @@ impl common::Renderer for SurfaceExample {
         _queue: &wgpu::Queue,
     ) {
         self.context = Some(GPUContext::new(device));
+
+        let path = Path::new(PathFillType::EvenOdd)
+            .move_to(100.0, 10.0)
+            .line_to(40.0, 180.0)
+            .line_to(190.0, 60.0)
+            .line_to(10.0, 60.0)
+            .line_to(160.0, 180.0)
+            .close();
+
+        self.picture.draw_path(path);
     }
 
     fn on_render(&mut self, surface: &wgpu::Surface, device: &wgpu::Device, queue: &wgpu::Queue) {
@@ -33,6 +48,9 @@ impl common::Renderer for SurfaceExample {
         let text = text.unwrap();
 
         let mut surface = GPUSurface::new(&text.texture, 800.0, 800.0, true, device);
+
+        surface.replay(&self.picture);
+
         surface.flush(
             &mut self.context.as_mut().unwrap(),
             device,
