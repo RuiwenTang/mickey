@@ -1,7 +1,5 @@
 mod common;
 
-use std::rc::Rc;
-
 use rskity::core::Surface as GPUSurface;
 use rskity::gpu::GPUContext;
 
@@ -16,7 +14,12 @@ impl SurfaceExample {
 }
 
 impl common::Renderer for SurfaceExample {
-    fn on_init(&mut self, format: wgpu::TextureFormat, device: &wgpu::Device, queue: &wgpu::Queue) {
+    fn on_init(
+        &mut self,
+        _format: wgpu::TextureFormat,
+        device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+    ) {
         self.context = Some(GPUContext::new(device));
     }
 

@@ -13,7 +13,7 @@ struct Vertex {
 
 struct Pipeline {
     groups: Vec<wgpu::BindGroupLayout>,
-    layout: wgpu::PipelineLayout,
+    _layout: wgpu::PipelineLayout,
     pipeline: wgpu::RenderPipeline,
 }
 
@@ -106,7 +106,7 @@ impl HelloTriangle {
 
         return Pipeline {
             groups: groups,
-            layout,
+            _layout: layout,
             pipeline,
         };
     }
@@ -216,7 +216,12 @@ impl HelloTriangle {
 }
 
 impl common::Renderer for HelloTriangle {
-    fn on_init(&mut self, format: wgpu::TextureFormat, device: &wgpu::Device, queue: &wgpu::Queue) {
+    fn on_init(
+        &mut self,
+        format: wgpu::TextureFormat,
+        device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+    ) {
         self.pipeline = Some(self.create_pipeline(format, device));
     }
 

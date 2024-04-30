@@ -49,10 +49,6 @@ impl<'a> CommandList<'a> {
         }
     }
 
-    pub(crate) fn add_command(&mut self, command: Command<'a>) {
-        self.commands.push(command);
-    }
-
     pub(crate) fn add_command_list(&mut self, commands: Vec<Command<'a>>) {
         self.commands.extend(commands);
     }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 pub(crate) struct Pipeline {
     pub(crate) groups: Vec<wgpu::BindGroupLayout>,
-    pub(crate) layout: wgpu::PipelineLayout,
+    pub(crate) _layout: wgpu::PipelineLayout,
     pub(crate) pipelines: HashMap<wgpu::DepthStencilState, wgpu::RenderPipeline>,
 }
 
@@ -133,7 +133,7 @@ impl<'a> PipelineBuilder<'a> {
 
         Pipeline {
             groups: bind_groups,
-            layout: layout,
+            _layout: layout,
             pipelines: pipelins,
         }
     }
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_builder() {
-        let (device, queue) = init_test_context();
+        let (device, _queue) = init_test_context();
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("test shader"),
@@ -177,7 +177,8 @@ mod tests {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
                     min_binding_size: wgpu::BufferSize::new(
-                        (std::mem::size_of::<nalgebra::Matrix4<f32>>() * 2) as wgpu::BufferAddress,
+                        (std::mem::size_of::<nalgebra::Matrix4<f32>>() * 2 + 16)
+                            as wgpu::BufferAddress,
                     ),
                 },
                 count: None,
