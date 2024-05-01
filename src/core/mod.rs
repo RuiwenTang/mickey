@@ -1,10 +1,11 @@
 pub(crate) mod path;
 pub(crate) mod picture;
+pub(crate) mod state;
 pub(crate) mod surface;
 
 use bytemuck::{Pod, Zeroable};
 pub use path::{Path, PathFillType};
-pub use picture::Picture;
+pub use picture::{Picture, PictureRecorder};
 pub use surface::Surface;
 
 #[repr(C)]

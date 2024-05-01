@@ -160,6 +160,8 @@ impl<'a> Surface<'a> {
                 clear_color,
             );
 
+            pass.set_stencil_reference(0);
+
             command_list.run(&mut pass);
         }
 
