@@ -2,10 +2,13 @@ use std::ops::Range;
 
 use nalgebra::{Matrix4, Vector4};
 
-use crate::gpu::{
-    buffer::StageBuffer,
-    context::PipelineGenerater,
-    pipeline::{Pipeline, PipelineBuilder},
+use crate::{
+    core::Color,
+    gpu::{
+        buffer::StageBuffer,
+        context::PipelineGenerater,
+        pipeline::{Pipeline, PipelineBuilder},
+    },
 };
 
 use super::Fragment;
@@ -49,13 +52,13 @@ impl TransformGroup {
 }
 
 pub(crate) struct SolidColorFragment {
-    color: Vector4<f32>,
+    color: Color,
     transform: TransformGroup,
     color_range: Range<wgpu::BufferAddress>,
 }
 
 impl SolidColorFragment {
-    pub(crate) fn new(color: Vector4<f32>, vw: f32, vh: f32, transform: Matrix4<f32>) -> Self {
+    pub(crate) fn new(color: Color, vw: f32, vh: f32, transform: Matrix4<f32>) -> Self {
         Self {
             color,
             transform: TransformGroup::new(
@@ -82,7 +85,7 @@ impl Fragment for SolidColorFragment {
     ) {
         self.transform.prepare(depth, buffer);
 
-        self.color_range = buffer.push_data_align(bytemuck::cast_slice(self.color.as_slice()));
+        self.color_range = buffer.push_data_align(bytemuck::cast_slice(&[self.color]));
     }
 
     fn gen_bind_groups<'a>(

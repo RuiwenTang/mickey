@@ -1,9 +1,13 @@
+pub(crate) mod color;
+pub(crate) mod paint;
 pub(crate) mod path;
 pub(crate) mod picture;
 pub(crate) mod state;
 pub(crate) mod surface;
 
 use bytemuck::{Pod, Zeroable};
+pub use color::Color;
+pub use paint::Paint;
 pub use path::{Path, PathFillType};
 pub use picture::{Picture, PictureRecorder};
 pub use surface::Surface;

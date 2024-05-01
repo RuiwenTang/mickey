@@ -2,10 +2,10 @@ use nalgebra::{Matrix4, Vector4};
 
 use crate::render::{fragment::SolidColorFragment, raster::PathFillRaster, PathRenderer, Renderer};
 
-use super::{state::State, Path};
+use super::{state::State, Paint, Path};
 
 pub(crate) enum DrawCommand {
-    DrawPath(Path),
+    DrawPath(Path, Paint),
 }
 
 pub(crate) struct Draw {
@@ -24,16 +24,11 @@ impl Draw {
         depth_offset: u32,
     ) -> Box<dyn Renderer> {
         match &self.command {
-            DrawCommand::DrawPath(path) => Box::new(PathRenderer::new(
+            DrawCommand::DrawPath(path, paint) => Box::new(PathRenderer::new(
                 target_format,
                 anti_alias,
                 PathFillRaster::new(path.clone()),
-                SolidColorFragment::new(
-                    Vector4::new(1.0, 0.0, 0.0, 0.5),
-                    vw,
-                    vh,
-                    self.transform.clone(),
-                ),
+                SolidColorFragment::new(paint.color, vw, vh, self.transform.clone()),
                 (self.depth + depth_offset) as f32,
             )),
         }
@@ -62,11 +57,11 @@ impl PictureRecorder {
         }
     }
 
-    pub fn draw_path(&mut self, path: Path) {
+    pub fn draw_path(&mut self, path: Path, paint: Paint) {
         self.current_depth += 1;
         self.draws.push(Draw {
             depth: self.current_depth,
-            command: DrawCommand::DrawPath(path),
+            command: DrawCommand::DrawPath(path, paint),
             transform: self.state.current_transform(),
         });
     }
