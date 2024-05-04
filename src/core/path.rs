@@ -85,6 +85,27 @@ impl Path {
         self
     }
 
+    /// Adds quad from last point towards (x1, y1), to (x2, y2).
+    /// If Path is empty or last verb is PathVerb::Close, last point is set to (0, 0) before adding quad.
+    pub fn quad_to(mut self, x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
+        self.inject_move_to_if_needed();
+
+        self.verts.push(PathVerb::QuadTo(
+            Point { x: x1, y: y1 },
+            Point { x: x2, y: y2 },
+        ));
+        self
+    }
+
+    /// Adds quad from last point towards point `ctr`, to point `end`.
+    /// If Path is empty or last verb is PathVerb::Close, last point is set to (0, 0) before adding quad.
+    pub fn quad_to_point(mut self, ctr: Point, end: Point) -> Self {
+        self.inject_move_to_if_needed();
+
+        self.verts.push(PathVerb::QuadTo(ctr, end));
+        self
+    }
+
     /// Appends PathVerb::Close to Path.
     /// A closed contour connects the first and last Point with line, forming a continuous loop.
     pub fn close(mut self) -> Self {

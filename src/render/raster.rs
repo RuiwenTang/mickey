@@ -1,5 +1,6 @@
 use super::{Raster, VertexMode};
 use crate::core::{
+    geometry::QuadCoeff,
     path::{Path, PathFillType, PathVerb},
     Point,
 };
@@ -36,6 +37,8 @@ impl Orientation {
 pub(crate) struct PathFillRaster {
     path: Path,
 }
+
+const CURVE_STEP: f32 = 16.0;
 
 impl PathFillRaster {
     pub(crate) fn new(path: Path) -> Self {
@@ -88,12 +91,68 @@ impl PathFillRaster {
 
                         points.push(p.clone());
 
-                        points.push(p.clone());
                         indices.push(first_pt_index.unwrap());
                         indices.push(prev_pt_index.unwrap());
                         indices.push(curr_index);
 
                         prev_pt = Some(p.clone());
+                        prev_pt_index = Some(curr_index);
+                    }
+                }
+                PathVerb::QuadTo(p1, p2) => {
+                    if prev_pt.is_none() && first_pt.is_none() {
+                        // some thing is wrong
+                        continue;
+                    }
+
+                    let a = if prev_pt.is_some() {
+                        prev_pt.as_ref().unwrap().clone()
+                    } else {
+                        first_pt.as_ref().unwrap().clone()
+                    };
+
+                    // TODO: flatten curve dynamic
+                    let quad = QuadCoeff::from(&a, p1, p2);
+
+                    let start = if prev_pt.is_none() {
+                        prev_pt = Some(a.clone());
+                        prev_pt_index = Some(points.len() as u32);
+                        points.push(a.clone());
+                        1
+                    } else {
+                        0
+                    };
+
+                    for step in start..(CURVE_STEP as i32) {
+                        let t = (step as f32 + 1.0) / CURVE_STEP;
+                        let curr = quad.eval(t);
+
+                        match Orientation::from(
+                            first_pt.as_ref().unwrap(),
+                            prev_pt.as_ref().unwrap(),
+                            &curr,
+                        ) {
+                            Orientation::LINEAR => {
+                                prev_pt_index = Some(points.len() as u32);
+                                points.push(curr);
+                                prev_pt = Some(curr.clone());
+                                continue;
+                            }
+                            Orientation::CW => {
+                                front_count += 1;
+                            }
+                            Orientation::CCW => {
+                                back_count += 1;
+                            }
+                        }
+                        let curr_index = points.len() as u32;
+
+                        points.push(curr.clone());
+                        indices.push(first_pt_index.unwrap());
+                        indices.push(prev_pt_index.unwrap());
+                        indices.push(curr_index);
+
+                        prev_pt = Some(curr.clone());
                         prev_pt_index = Some(curr_index);
                     }
                 }

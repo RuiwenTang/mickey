@@ -1,4 +1,5 @@
 pub(crate) mod color;
+pub(crate) mod geometry;
 pub(crate) mod paint;
 pub(crate) mod path;
 pub(crate) mod picture;

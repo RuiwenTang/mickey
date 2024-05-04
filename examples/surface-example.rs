@@ -1,6 +1,6 @@
 mod common;
 
-use rskity::core::{Color, Paint, Surface as GPUSurface};
+use rskity::core::{Color, Paint, Point, Surface as GPUSurface};
 use rskity::core::{Path, PathFillType, Picture, PictureRecorder};
 use rskity::gpu::GPUContext;
 
@@ -48,7 +48,16 @@ impl common::Renderer for SurfaceExample {
 
         paint.color = Color::magenta();
 
-        recorder.draw_path(path, paint);
+        recorder.draw_path(path, paint.clone());
+
+        let curve = Path::new(PathFillType::Winding)
+            .move_to(10.0, 10.0)
+            .quad_to_point(Point { x: 256.0, y: 64.0 }, Point { x: 128.0, y: 128.0 })
+            .close();
+
+        recorder.translate(200.0, 0.0);
+
+        recorder.draw_path(curve, paint.clone());
 
         self.picture = Some(recorder.finish_record());
     }

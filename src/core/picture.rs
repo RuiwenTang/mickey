@@ -1,4 +1,4 @@
-use nalgebra::{Matrix4, Vector4};
+use nalgebra::Matrix4;
 
 use crate::render::{fragment::SolidColorFragment, raster::PathFillRaster, PathRenderer, Renderer};
 
