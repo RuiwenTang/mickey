@@ -1,9 +1,10 @@
 use super::{Raster, VertexMode};
 use crate::core::{
-    path::{Path, PathFillType, PolylineBuilder},
+    paint::{StrokeCap, StrokeJoin},
+    path::{Contour, Path, PathFillType, PolylineBuilder},
     Point,
 };
-use nalgebra::Point2;
+use nalgebra::{Point2, Vector2};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Orientation {
@@ -33,11 +34,11 @@ impl Orientation {
     }
 }
 
-pub(crate) struct PathFillRaster {
+pub(crate) struct PathFill {
     path: Path,
 }
 
-impl PathFillRaster {
+impl PathFill {
     pub(crate) fn new(path: Path) -> Self {
         Self { path }
     }
@@ -100,7 +101,7 @@ impl PathFillRaster {
     }
 }
 
-impl Raster for PathFillRaster {
+impl Raster for PathFill {
     fn rasterize(
         &self,
         buffer: &mut crate::gpu::buffer::StageBuffer,
@@ -116,5 +117,128 @@ impl Raster for PathFillRaster {
         let index_range = buffer.push_data(bytemuck::cast_slice(&indices));
 
         (vertex_range, index_range, mode, indices.len() as u32)
+    }
+}
+
+pub(crate) struct PathStroke {
+    path: Path,
+    stroke_width: f32,
+    miter_limit: f32,
+    cap: StrokeCap,
+    join: StrokeJoin,
+}
+
+impl PathStroke {
+    pub(crate) fn new(
+        path: Path,
+        stroke_width: f32,
+        miter_limit: f32,
+        cap: StrokeCap,
+        join: StrokeJoin,
+    ) -> Self {
+        Self {
+            path,
+            stroke_width,
+            miter_limit,
+            cap,
+            join,
+        }
+    }
+
+    pub(crate) fn stroke_contour(
+        &self,
+        contour: &Contour,
+        mut points: Vec<Point>,
+        mut indices: Vec<u32>,
+    ) -> (Vec<Point>, Vec<u32>) {
+        for i in 0..contour.points.len() - 1 {
+            let p1 = &contour.points[i];
+            let p2 = &contour.points[i + 1];
+
+            if p1 == p2 {
+                continue;
+            }
+
+            let (a, b, c, d) = self.expend_line(p1, p2);
+
+            let a_index = points.len() as u32;
+            points.push(a.clone());
+
+            let b_index = points.len() as u32;
+            points.push(b.clone());
+
+            let c_index = points.len() as u32;
+            points.push(c.clone());
+
+            let d_index = points.len() as u32;
+            points.push(d.clone());
+
+            // a --------- c
+            // |           |
+            // |           |
+            // b-----------d
+            indices.push(a_index);
+            indices.push(b_index);
+            indices.push(c_index);
+
+            indices.push(b_index);
+            indices.push(d_index);
+            indices.push(c_index);
+        }
+
+        return (points, indices);
+    }
+
+    fn expend_line(&self, p1: &Point, p2: &Point) -> (Point, Point, Point, Point) {
+        let stroke_radius = (self.stroke_width as f64) * 0.5;
+
+        let p1 = Vector2::new(p1.x as f64, p1.y as f64);
+        let p2 = Vector2::new(p2.x as f64, p2.y as f64);
+
+        let dir = (p2 - p1).normalize();
+        let normal = Vector2::new(-dir.y, dir.x);
+
+        let a = p1 + normal * stroke_radius;
+        let b = p1 - normal * stroke_radius;
+        let c = p2 + normal * stroke_radius;
+        let d = p2 - normal * stroke_radius;
+
+        return (
+            Point::from_highp(a.x, a.y),
+            Point::from_highp(b.x, b.y),
+            Point::from_highp(c.x, c.y),
+            Point::from_highp(d.x, d.y),
+        );
+    }
+}
+
+impl Raster for PathStroke {
+    fn rasterize(
+        &self,
+        buffer: &mut crate::gpu::buffer::StageBuffer,
+    ) -> (
+        std::ops::Range<wgpu::BufferAddress>,
+        std::ops::Range<wgpu::BufferAddress>,
+        VertexMode,
+        u32,
+    ) {
+        let polyline = PolylineBuilder::from(&self.path).build();
+
+        let mut points: Vec<Point> = Vec::new();
+        let mut indices: Vec<u32> = Vec::new();
+
+        for contour in &polyline.contours {
+            (points, indices) = self.stroke_contour(contour, points, indices);
+        }
+
+        let vertex_range = buffer.push_data(bytemuck::cast_slice(&points));
+        let index_range = buffer.push_data(bytemuck::cast_slice(&indices));
+
+        return (
+            vertex_range,
+            index_range,
+            VertexMode::NonOverlap,
+            indices.len() as u32,
+        );
     }
 }

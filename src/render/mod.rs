@@ -34,6 +34,7 @@ pub(crate) enum VertexMode {
     Convex,
     Complex,
     EvenOddFill,
+    NonOverlap,
 }
 
 pub(crate) trait Raster {
@@ -74,11 +75,11 @@ pub(crate) trait Fragment {
     ) -> wgpu::BindGroup;
 }
 
-pub(crate) struct PathRenderer<R: Raster, F: Fragment> {
+pub(crate) struct PathRenderer {
     format: wgpu::TextureFormat,
     anti_alias: bool,
-    raster: R,
-    fragment: F,
+    raster: Box<dyn Raster>,
+    fragment: Box<dyn Fragment>,
     depth: f32,
     vertex_range: Range<wgpu::BufferAddress>,
     index_range: Range<wgpu::BufferAddress>,
@@ -86,12 +87,12 @@ pub(crate) struct PathRenderer<R: Raster, F: Fragment> {
     draw_count: u32,
 }
 
-impl<R: Raster, F: Fragment> PathRenderer<R, F> {
+impl PathRenderer {
     pub(crate) fn new(
         format: wgpu::TextureFormat,
         anti_alias: bool,
-        raster: R,
-        fragment: F,
+        raster: Box<dyn Raster>,
+        fragment: Box<dyn Fragment>,
         depth: f32,
     ) -> Self {
         Self {
@@ -231,7 +232,7 @@ impl<R: Raster, F: Fragment> PathRenderer<R, F> {
     }
 }
 
-impl<R: Raster, F: Fragment> Renderer for PathRenderer<R, F> {
+impl Renderer for PathRenderer {
     fn pipeline_label(&self) -> &'static str {
         self.fragment.get_pipeline_name()
     }

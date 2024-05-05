@@ -1,6 +1,10 @@
 use nalgebra::Matrix4;
 
-use crate::render::{fragment::SolidColorFragment, raster::PathFillRaster, PathRenderer, Renderer};
+use crate::render::{
+    fragment::SolidColorFragment,
+    raster::{PathFill, PathStroke},
+    PathRenderer, Raster, Renderer,
+};
 
 use super::{state::State, Paint, Path};
 
@@ -24,13 +28,30 @@ impl Draw {
         depth_offset: u32,
     ) -> Box<dyn Renderer> {
         match &self.command {
-            DrawCommand::DrawPath(path, paint) => Box::new(PathRenderer::new(
-                target_format,
-                anti_alias,
-                PathFillRaster::new(path.clone()),
-                SolidColorFragment::new(paint.color, vw, vh, self.transform.clone()),
-                (self.depth + depth_offset) as f32,
-            )),
+            DrawCommand::DrawPath(path, paint) => {
+                let raster: Box<dyn Raster> = match paint.style {
+                    super::paint::Style::Fill => Box::new(PathFill::new(path.clone())),
+                    super::paint::Style::Stroke {
+                        width,
+                        miter_limit,
+                        cap,
+                        join,
+                    } => Box::new(PathStroke::new(path.clone(), width, miter_limit, cap, join)),
+                };
+
+                Box::new(PathRenderer::new(
+                    target_format,
+                    anti_alias,
+                    raster,
+                    Box::new(SolidColorFragment::new(
+                        paint.color,
+                        vw,
+                        vh,
+                        self.transform.clone(),
+                    )),
+                    (self.depth + depth_offset) as f32,
+                ))
+            }
         }
     }
 }
