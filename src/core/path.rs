@@ -1,4 +1,4 @@
-use super::Point;
+use super::{geometry::QuadCoeff, Point};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PathVerb {
@@ -113,5 +113,147 @@ impl Path {
         self.last_move_to_index = None;
 
         self
+    }
+}
+
+pub(crate) struct Contour {
+    pub(crate) points: Vec<Point>,
+    pub(crate) closed: bool,
+}
+
+impl Contour {
+    pub(crate) fn new() -> Self {
+        Self {
+            points: Vec::new(),
+            closed: false,
+        }
+    }
+    pub(crate) fn add_point(&mut self, p: Point) {
+        self.points.push(p);
+    }
+
+    pub(crate) fn last_point(&self) -> Option<&Point> {
+        self.points.last()
+    }
+}
+
+pub(crate) struct Polyline {
+    pub(crate) contours: Vec<Contour>,
+}
+
+pub(crate) struct PolylineBuilder<'a> {
+    path: &'a Path,
+    verbs: Vec<PathVerb>,
+}
+
+const CURVE_STEP: f32 = 16.0;
+
+impl<'a> PolylineBuilder<'a> {
+    pub(crate) fn from(path: &'a Path) -> Self {
+        Self {
+            path: path,
+            verbs: Vec::new(),
+        }
+    }
+
+    /// Simplefy verbs
+    ///  Remove PathVerb::Move if it not continue with line_to or other curve verbs
+    fn simple_verbs(mut self) -> Self {
+        let verb_count = self.path.verts.len();
+        let mut prev_is_move = false;
+        for (i, e) in self.path.verts.iter().enumerate() {
+            match e {
+                PathVerb::MoveTo(p) => {
+                    if i == verb_count - 1 {
+                        continue;
+                    }
+                    prev_is_move = true;
+                    match self.path.verts[i + 1] {
+                        PathVerb::Close => continue,
+                        PathVerb::MoveTo(_) => continue,
+                        _ => {
+                            self.verbs.push(PathVerb::MoveTo(p.clone()));
+                        }
+                    }
+                }
+                PathVerb::Close => {
+                    if prev_is_move {
+                        continue;
+                    }
+                    if self.verbs.is_empty() {
+                        continue;
+                    }
+
+                    match self.verbs.last().as_ref().unwrap() {
+                        PathVerb::Close => continue,
+                        PathVerb::MoveTo(_) => {
+                            self.verbs.pop();
+                            continue;
+                        }
+                        _ => {}
+                    }
+
+                    self.verbs.push(PathVerb::Close);
+                }
+                _ => {
+                    prev_is_move = false;
+                    self.verbs.push(e.clone());
+                }
+            }
+        }
+
+        self
+    }
+
+    fn create_contours(self) -> Vec<Contour> {
+        let mut contours: Vec<Contour> = Vec::new();
+
+        for v in &self.verbs {
+            match v {
+                PathVerb::MoveTo(p) => {
+                    contours.push(Contour::new());
+
+                    contours
+                        .last_mut()
+                        .expect("Not create contour")
+                        .add_point(p.clone());
+                }
+                PathVerb::LineTo(p) => {
+                    contours
+                        .last_mut()
+                        .expect("Not create contour")
+                        .add_point(p.clone());
+                }
+                PathVerb::QuadTo(ctr, end) => {
+                    let quad = QuadCoeff::from(
+                        contours
+                            .last()
+                            .expect("Not create contour")
+                            .last_point()
+                            .expect("Contour not start"),
+                        ctr,
+                        end,
+                    );
+
+                    // TODO: flatten curve dynamic with line count
+                    for step in 0..(CURVE_STEP as i32) {
+                        let t = (step as f32 + 1.0) / CURVE_STEP;
+                        contours.last_mut().unwrap().add_point(quad.eval(t));
+                    }
+                }
+                PathVerb::CubicTo(_, _, _) => todo!(),
+                PathVerb::Close => {
+                    contours.last_mut().expect("Not start contour").closed = true;
+                }
+            }
+        }
+
+        return contours;
+    }
+
+    pub(crate) fn build(self) -> Polyline {
+        let contours = self.simple_verbs().create_contours();
+
+        return Polyline { contours };
     }
 }

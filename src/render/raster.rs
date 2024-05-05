@@ -1,7 +1,6 @@
 use super::{Raster, VertexMode};
 use crate::core::{
-    geometry::QuadCoeff,
-    path::{Path, PathFillType, PathVerb},
+    path::{Path, PathFillType, PolylineBuilder},
     Point,
 };
 use nalgebra::Point2;
@@ -38,8 +37,6 @@ pub(crate) struct PathFillRaster {
     path: Path,
 }
 
-const CURVE_STEP: f32 = 16.0;
-
 impl PathFillRaster {
     pub(crate) fn new(path: Path) -> Self {
         Self { path }
@@ -51,118 +48,43 @@ impl PathFillRaster {
         let mut front_count = 0;
         let mut back_count = 0;
 
-        let mut first_pt: Option<Point> = None;
-        let mut first_pt_index: Option<u32> = None;
-        let mut prev_pt: Option<Point> = None;
-        let mut prev_pt_index: Option<u32> = None;
+        let polyline = PolylineBuilder::from(&self.path).build();
 
-        for v in &self.path.verts {
-            match v {
-                PathVerb::MoveTo(p) => {
-                    first_pt = Some(p.clone());
-                    first_pt_index = Some(points.len() as u32);
-                    prev_pt = None;
-                    prev_pt_index = None;
+        for contour in &polyline.contours {
+            if contour.points.len() < 3 {
+                // can not fill contour with less than 3 points
+                continue;
+            }
 
-                    points.push(p.clone());
-                }
-                PathVerb::LineTo(p) => {
-                    if prev_pt.is_none() {
-                        prev_pt = Some(p.clone());
-                        prev_pt_index = Some(points.len() as u32);
-                        points.push(p.clone());
-                    } else {
-                        match Orientation::from(
-                            first_pt.as_ref().unwrap(),
-                            prev_pt.as_ref().unwrap(),
-                            p,
-                        ) {
-                            Orientation::LINEAR => {
-                                continue;
-                            }
-                            Orientation::CW => {
-                                front_count += 1;
-                            }
-                            Orientation::CCW => {
-                                back_count += 1;
-                            }
-                        }
-                        let curr_index = points.len() as u32;
+            let first_pt = &contour.points[0];
+            let first_index = points.len() as u32;
+            points.push(first_pt.clone());
 
-                        points.push(p.clone());
+            let mut prev_pt = &contour.points[1];
+            let mut prev_index = points.len() as u32;
+            points.push(prev_pt.clone());
 
-                        indices.push(first_pt_index.unwrap());
-                        indices.push(prev_pt_index.unwrap());
-                        indices.push(curr_index);
-
-                        prev_pt = Some(p.clone());
-                        prev_pt_index = Some(curr_index);
-                    }
-                }
-                PathVerb::QuadTo(p1, p2) => {
-                    if prev_pt.is_none() && first_pt.is_none() {
-                        // some thing is wrong
+            for i in 2..contour.points.len() {
+                let curr_pt = &contour.points[i];
+                match Orientation::from(first_pt, prev_pt, curr_pt) {
+                    Orientation::LINEAR => {
+                        points.last_mut().unwrap().x = curr_pt.x;
+                        points.last_mut().unwrap().y = curr_pt.y;
                         continue;
                     }
-
-                    let a = if prev_pt.is_some() {
-                        prev_pt.as_ref().unwrap().clone()
-                    } else {
-                        first_pt.as_ref().unwrap().clone()
-                    };
-
-                    // TODO: flatten curve dynamic
-                    let quad = QuadCoeff::from(&a, p1, p2);
-
-                    let start = if prev_pt.is_none() {
-                        prev_pt = Some(a.clone());
-                        prev_pt_index = Some(points.len() as u32);
-                        points.push(a.clone());
-                        1
-                    } else {
-                        0
-                    };
-
-                    for step in start..(CURVE_STEP as i32) {
-                        let t = (step as f32 + 1.0) / CURVE_STEP;
-                        let curr = quad.eval(t);
-
-                        match Orientation::from(
-                            first_pt.as_ref().unwrap(),
-                            prev_pt.as_ref().unwrap(),
-                            &curr,
-                        ) {
-                            Orientation::LINEAR => {
-                                prev_pt_index = Some(points.len() as u32);
-                                points.push(curr);
-                                prev_pt = Some(curr.clone());
-                                continue;
-                            }
-                            Orientation::CW => {
-                                front_count += 1;
-                            }
-                            Orientation::CCW => {
-                                back_count += 1;
-                            }
-                        }
-                        let curr_index = points.len() as u32;
-
-                        points.push(curr.clone());
-                        indices.push(first_pt_index.unwrap());
-                        indices.push(prev_pt_index.unwrap());
-                        indices.push(curr_index);
-
-                        prev_pt = Some(curr.clone());
-                        prev_pt_index = Some(curr_index);
-                    }
+                    Orientation::CW => front_count += 1,
+                    Orientation::CCW => back_count += 1,
                 }
-                PathVerb::Close => {
-                    first_pt = None;
-                    first_pt_index = None;
-                    prev_pt = None;
-                    prev_pt_index = None;
-                }
-                _ => {}
+
+                let curr_index = points.len() as u32;
+                points.push(curr_pt.clone());
+
+                indices.push(first_index);
+                indices.push(prev_index);
+                indices.push(curr_index);
+
+                prev_pt = curr_pt;
+                prev_index = curr_index;
             }
         }
 
