@@ -37,6 +37,40 @@ impl QuadCoeff {
     }
 }
 
+/// used for : eval(t)  a * t ^ 3 + b * t ^ 2 + c * t + d
+pub(crate) struct CubicCoeff {
+    a: Vector2<f64>,
+    b: Vector2<f64>,
+    c: Vector2<f64>,
+    d: Vector2<f64>,
+}
+
+impl CubicCoeff {
+    pub(crate) fn from(p1: &Point, p2: &Point, p3: &Point, p4: &Point) -> Self {
+        let pp0 = Vector2::new(p1.x as f64, p1.y as f64);
+        let pp1 = Vector2::new(p2.x as f64, p2.y as f64);
+        let pp2 = Vector2::new(p3.x as f64, p3.y as f64);
+        let pp3 = Vector2::new(p4.x as f64, p4.y as f64);
+
+        let a = pp3 + (pp1 - pp2) * 3.0 - pp0;
+        let b = (pp2 - pp1 * 2.0 + pp0) * 3.0;
+        let c = (pp1 - pp0) * 3.0;
+        let d = pp0;
+
+        Self { a, b, c, d }
+    }
+
+    pub(crate) fn eval(&self, t: f32) -> Point {
+        let tt = t as f64;
+        let p = ((self.a * tt + self.b) * tt + self.c) * tt + self.d;
+
+        Point {
+            x: p.x as f32,
+            y: p.y as f32,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

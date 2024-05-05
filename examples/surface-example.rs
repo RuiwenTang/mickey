@@ -37,6 +37,8 @@ impl common::Renderer for SurfaceExample {
 
         let mut recorder = PictureRecorder::new();
 
+        recorder.save();
+
         let mut paint = Paint::new();
         paint.color = Color::red().with_alpha(0.5);
 
@@ -53,11 +55,23 @@ impl common::Renderer for SurfaceExample {
         let curve = Path::new(PathFillType::Winding)
             .move_to(10.0, 10.0)
             .quad_to_point(Point { x: 256.0, y: 64.0 }, Point { x: 128.0, y: 128.0 })
+            .quad_to_point(Point { x: 10.0, y: 192.0 }, Point { x: 250.0, y: 250.0 })
             .close();
 
         recorder.translate(200.0, 0.0);
 
         recorder.draw_path(curve, paint.clone());
+
+        let cubic = Path::new(PathFillType::Winding)
+            .cubic_to(256.0, 64.0, 10.0, 192.0, 250.0, 450.0)
+            .move_to(50.0, 50.0)
+            .close();
+
+        recorder.restore();
+
+        recorder.translate(20.0, 300.0);
+
+        recorder.draw_path(cubic, paint.clone());
 
         self.picture = Some(recorder.finish_record());
     }
