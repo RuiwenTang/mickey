@@ -205,7 +205,7 @@ impl PathRenderer {
                 },
                 bias: Default::default(),
             }
-        } else {
+        } else if self.vertex_mode == VertexMode::Complex {
             wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth24PlusStencil8,
                 depth_write_enabled: false,
@@ -222,6 +222,29 @@ impl PathRenderer {
                         fail_op: wgpu::StencilOperation::Keep,
                         depth_fail_op: wgpu::StencilOperation::Keep,
                         pass_op: wgpu::StencilOperation::Replace,
+                    },
+                    read_mask: 0xff,
+                    write_mask: 0xff,
+                },
+                bias: Default::default(),
+            }
+        } else {
+            wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth24PlusStencil8,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Greater,
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Always,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Keep,
+                    },
+                    back: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Always,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Keep,
                     },
                     read_mask: 0xff,
                     write_mask: 0xff,
@@ -271,7 +294,7 @@ impl Renderer for PathRenderer {
         }
 
         let mut commands: Vec<Command<'a>> = Vec::new();
-        if self.vertex_mode != VertexMode::Convex {
+        if self.vertex_mode != VertexMode::Convex && self.vertex_mode != VertexMode::NonOverlap {
             commands.push(self.gen_stencil_command(buffer, context, device));
         }
 
