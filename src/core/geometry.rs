@@ -37,6 +37,41 @@ impl QuadCoeff {
     }
 }
 
+pub(crate) fn cross_product(p: &Point, q: &Point, r: &Point) -> f32 {
+    (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)
+}
+
+pub(crate) fn dot_product(p: &Vector2<f64>, q: &Vector2<f64>) -> f64 {
+    p.x * q.x + p.y * q.y
+}
+
+pub(crate) fn distance(p: &Vector2<f64>) -> f64 {
+    (p.x * p.x + p.y * p.y).sqrt()
+}
+
+pub(crate) fn circle_interpolation(
+    start: &Vector2<f64>,
+    end: &Vector2<f64>,
+    num: u32,
+) -> Vec<Vector2<f64>> {
+    let mut ret: Vec<Vector2<f64>> = Vec::with_capacity(num as usize);
+
+    let cos_theta = dot_product(start, end);
+    let step = 1.0 / (num as f64);
+
+    let theta = f64::acos(cos_theta);
+    let sin_theta = f64::sin(theta);
+
+    for i in 1..(num + 1) {
+        let t = step * (i as f64);
+        let complement_tt = f64::sin((1.0 - t) * theta) / sin_theta;
+        let tt = f64::sin(t * theta) / sin_theta;
+        ret.push(complement_tt * start + tt * end);
+    }
+
+    return ret;
+}
+
 /// used for : eval(t)  a * t ^ 3 + b * t ^ 2 + c * t + d
 pub(crate) struct CubicCoeff {
     a: Vector2<f64>,

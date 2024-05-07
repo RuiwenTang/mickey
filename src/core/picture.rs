@@ -6,7 +6,7 @@ use crate::render::{
     PathRenderer, Raster, Renderer,
 };
 
-use super::{state::State, Paint, Path};
+use super::{state::State, Paint, Path, Style};
 
 pub(crate) enum DrawCommand {
     DrawPath(Path, Paint),
@@ -30,8 +30,8 @@ impl Draw {
         match &self.command {
             DrawCommand::DrawPath(path, paint) => {
                 let raster: Box<dyn Raster> = match paint.style {
-                    super::paint::Style::Fill => Box::new(PathFill::new(path.clone())),
-                    super::paint::Style::Stroke {
+                    Style::Fill => Box::new(PathFill::new(path.clone())),
+                    Style::Stroke {
                         width,
                         miter_limit,
                         cap,

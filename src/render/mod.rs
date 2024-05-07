@@ -244,11 +244,12 @@ impl Renderer for PathRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) {
-        let (vertex_range, index_range, vertex_mode, draw_count) = self.raster.rasterize(buffer);
-        self.vertex_range = vertex_range;
-        self.index_range = index_range;
-        self.vertex_mode = vertex_mode;
-        self.draw_count = draw_count;
+        (
+            self.vertex_range,
+            self.index_range,
+            self.vertex_mode,
+            self.draw_count,
+        ) = self.raster.rasterize(buffer);
 
         self.fragment
             .prepare(self.depth / total_depth, buffer, device, queue);

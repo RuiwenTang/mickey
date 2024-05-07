@@ -76,17 +76,19 @@ impl common::Renderer for SurfaceExample {
         let mut paint = Paint::new();
         paint.color = Color::red().with_alpha(0.3);
         paint.style = Style::Stroke {
-            width: 40.0,
+            width: 20.0,
             miter_limit: 4.0,
-            cap: StrokeCap::default(),
-            join: StrokeJoin::default(),
+            cap: StrokeCap::Square,
+            join: StrokeJoin::Round,
         };
 
         let line = Path::new(PathFillType::Winding)
             .move_to(10.0, 10.0)
             .line_to(200.0, 200.0)
             .line_to(300.0, 100.0)
-            .line_to(400.0, 300.0);
+            .line_to(400.0, 300.0)
+            .line_to(10.0, 10.0)
+            .close();
 
         recorder.translate(300.0, 0.0);
 
