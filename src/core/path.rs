@@ -1,6 +1,6 @@
 use super::{
     geometry::{CubicCoeff, QuadCoeff},
-    Point,
+    Point, Rect,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -27,6 +27,54 @@ impl Default for PathFillType {
     }
 }
 
+struct PointIterator {
+    pts: Vec<Point>,
+    current: usize,
+}
+
+impl PointIterator {
+    fn new(pts: Vec<Point>) -> Self {
+        Self { pts, current: 0 }
+    }
+
+    fn from_rect(rect: &Rect) -> Self {
+        let mut pts = Vec::new();
+        pts.push(Point {
+            x: rect.left,
+            y: rect.top,
+        });
+        pts.push(Point {
+            x: rect.right,
+            y: rect.top,
+        });
+        pts.push(Point {
+            x: rect.right,
+            y: rect.bottom,
+        });
+        pts.push(Point {
+            x: rect.left,
+            y: rect.bottom,
+        });
+
+        Self::new(pts)
+    }
+}
+
+impl Iterator for PointIterator {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current >= self.pts.len() {
+            return None;
+        }
+
+        let pt = self.pts[self.current];
+        self.current += 1;
+
+        return Some(pt);
+    }
+}
+
 /// Path contain geometry.Path may be empty, or contain one or more verbs that outline a figure.
 /// Path always starts with a move verb to a Cartesian coordinate, and may be followed by additional verbs that add lines or curves.
 /// Adding a close verb makes the geometry into a continuous loop, a closed contour.
@@ -41,7 +89,21 @@ pub struct Path {
 }
 
 impl Path {
-    pub fn new(fill_type: PathFillType) -> Self {
+    /// Create a new empty path instance. With default fill type Winding.
+    pub fn new() -> Self {
+        Self {
+            verts: Vec::new(),
+            last_move_to_index: None,
+            fill_type: PathFillType::Winding,
+        }
+    }
+
+    /// Create a new empty path instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `fill_type` the fill type of the path
+    pub fn with_fill_type(fill_type: PathFillType) -> Self {
         Self {
             verts: Vec::new(),
             last_move_to_index: None,
@@ -129,6 +191,23 @@ impl Path {
 
         self.verts.push(PathVerb::CubicTo(ctr1, ctr2, end));
         self
+    }
+
+    /// Adds a new contour to the path, defined by the Rect.
+    /// The verbs added to the path will be:
+    /// MoveTo, LineTo, LineTo, LineTo, Close
+    pub fn add_rect(self, rect: &Rect) -> Self {
+        if rect.is_empty() {
+            return self;
+        }
+
+        let mut iter = PointIterator::from_rect(rect);
+
+        self.move_to_point(iter.next().unwrap())
+            .line_to_point(iter.next().unwrap())
+            .line_to_point(iter.next().unwrap())
+            .line_to_point(iter.next().unwrap())
+            .close()
     }
 
     /// Appends PathVerb::Close to Path.

@@ -6,7 +6,7 @@ use crate::render::{
     PathRenderer, Raster, Renderer,
 };
 
-use super::{state::State, Paint, Path, Style};
+use super::{state::State, Paint, Path, Rect, Style};
 
 pub(crate) enum DrawCommand {
     DrawPath(Path, Paint),
@@ -78,6 +78,12 @@ impl PictureRecorder {
         }
     }
 
+    /// Draws path with current clip and transform.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` the path to draw
+    /// * `paint` the paint controls the styling when drawing the path
     pub fn draw_path(&mut self, path: Path, paint: Paint) {
         self.current_depth += 1;
         self.draws.push(Draw {
@@ -85,6 +91,16 @@ impl PictureRecorder {
             command: DrawCommand::DrawPath(path, paint),
             transform: self.state.current_transform(),
         });
+    }
+
+    /// Draws rect with current clip and transform.
+    ///
+    /// # Arguments
+    ///
+    /// * `rect` the rect to draw
+    /// * `paint` the paint controls the styling when drawing the rect
+    pub fn draw_rect(&mut self, rect: &Rect, paint: Paint) {
+        self.draw_path(Path::new().add_rect(rect), paint);
     }
 
     /// Save current transform matrix and clip state

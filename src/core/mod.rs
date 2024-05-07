@@ -32,3 +32,74 @@ impl Point {
         Self { x, y }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Rect {
+    /// The left coordinate of the rectangle. If sorted.
+    pub left: f32,
+    /// The top coordinate of the rectangle. If sorted.
+    pub top: f32,
+    /// The right coordinate of the rectangle. If sorted.
+    pub right: f32,
+    /// The bottom coordinate of the rectangle. If sorted.
+    pub bottom: f32,
+}
+
+impl Rect {
+    pub fn from_ltrb(left: f32, top: f32, right: f32, bottom: f32) -> Self {
+        Self {
+            left,
+            top,
+            right,
+            bottom,
+        }
+    }
+
+    pub fn from_xywh(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self {
+            left: x,
+            top: y,
+            right: x + width,
+            bottom: y + height,
+        }
+    }
+
+    /// Returns the width of the rectangle.
+    /// This dose not check if Rect is sorted.
+    /// Result may be negative.
+    pub fn width(&self) -> f32 {
+        self.right - self.left
+    }
+
+    /// Returns the height of the rectangle.
+    /// This dose not check if Rect is sorted.
+    /// Result may be negative.
+    pub fn height(&self) -> f32 {
+        self.bottom - self.top
+    }
+
+    pub fn center(&self) -> Point {
+        Point {
+            x: self.left + self.width() / 2.0,
+            y: self.top + self.height() / 2.0,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.left >= self.right || self.top >= self.bottom
+    }
+
+    pub fn is_sorted(&self) -> bool {
+        self.left <= self.right && self.top <= self.bottom
+    }
+
+    pub fn sort(&mut self) {
+        if self.left > self.right {
+            std::mem::swap(&mut self.left, &mut self.right);
+        }
+
+        if self.top > self.bottom {
+            std::mem::swap(&mut self.top, &mut self.bottom);
+        }
+    }
+}

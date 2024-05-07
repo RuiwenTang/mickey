@@ -1,6 +1,8 @@
 mod common;
 
-use rskity::core::{Color, Paint, Point, StrokeCap, StrokeJoin, Style, Surface as GPUSurface};
+use rskity::core::{
+    Color, Paint, Point, Rect, StrokeCap, StrokeJoin, Style, Surface as GPUSurface,
+};
 use rskity::core::{Path, PathFillType, Picture, PictureRecorder};
 use rskity::gpu::GPUContext;
 
@@ -27,7 +29,7 @@ impl common::Renderer for SurfaceExample {
     ) {
         self.context = Some(GPUContext::new(device));
 
-        let mut path = Path::new(PathFillType::Winding)
+        let mut path = Path::new()
             .move_to(100.0, 10.0)
             .line_to(40.0, 180.0)
             .line_to(190.0, 60.0)
@@ -52,7 +54,7 @@ impl common::Renderer for SurfaceExample {
 
         recorder.draw_path(path, paint.clone());
 
-        let curve = Path::new(PathFillType::Winding)
+        let curve = Path::new()
             .move_to(10.0, 10.0)
             .quad_to_point(Point { x: 256.0, y: 64.0 }, Point { x: 128.0, y: 128.0 })
             .quad_to_point(Point { x: 10.0, y: 192.0 }, Point { x: 250.0, y: 250.0 })
@@ -62,7 +64,7 @@ impl common::Renderer for SurfaceExample {
 
         recorder.draw_path(curve, paint.clone());
 
-        let cubic = Path::new(PathFillType::Winding)
+        let cubic = Path::new()
             .cubic_to(256.0, 64.0, 10.0, 192.0, 250.0, 450.0)
             .move_to(50.0, 50.0)
             .close();
@@ -82,7 +84,7 @@ impl common::Renderer for SurfaceExample {
             join: StrokeJoin::Round,
         };
 
-        let line = Path::new(PathFillType::Winding)
+        let line = Path::new()
             .move_to(10.0, 10.0)
             .line_to(200.0, 200.0)
             .line_to(300.0, 100.0)
@@ -93,6 +95,14 @@ impl common::Renderer for SurfaceExample {
         recorder.translate(300.0, 0.0);
 
         recorder.draw_path(line, paint);
+
+        paint.style = Style::Stroke {
+            width: 5.0,
+            miter_limit: 4.0,
+            cap: StrokeCap::Square,
+            join: StrokeJoin::Miter,
+        };
+        recorder.draw_rect(&Rect::from_xywh(50.0, 200.0, 100.0, 100.0), paint);
 
         self.picture = Some(recorder.finish_record());
     }
