@@ -8,7 +8,7 @@ pub(crate) mod surface;
 
 use bytemuck::{Pod, Zeroable};
 pub use color::Color;
-pub use paint::{Paint, StrokeCap, StrokeJoin, Style};
+pub use paint::{Paint, Stroke, StrokeCap, StrokeJoin, Style};
 pub use path::{Path, PathDirection, PathFillType};
 pub use picture::{Picture, PictureRecorder};
 pub use surface::Surface;

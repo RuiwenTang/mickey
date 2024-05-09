@@ -31,12 +31,13 @@ impl Draw {
             DrawCommand::DrawPath(path, paint) => {
                 let raster: Box<dyn Raster> = match paint.style {
                     Style::Fill => Box::new(PathFill::new(path.clone())),
-                    Style::Stroke {
-                        width,
-                        miter_limit,
-                        cap,
-                        join,
-                    } => Box::new(PathStroke::new(path.clone(), width, miter_limit, cap, join)),
+                    Style::Stroke(stroke) => Box::new(PathStroke::new(
+                        path.clone(),
+                        stroke.width,
+                        stroke.miter_limit,
+                        stroke.cap,
+                        stroke.join,
+                    )),
                 };
 
                 Box::new(PathRenderer::new(

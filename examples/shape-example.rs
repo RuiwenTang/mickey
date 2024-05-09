@@ -1,6 +1,6 @@
 use rskity::{
     core::{
-        Color, Paint, Picture, PictureRecorder, Point, RRect, Rect, StrokeJoin, Style,
+        Color, Paint, Picture, PictureRecorder, Point, RRect, Rect, Stroke, StrokeJoin, Style,
         Surface as GPUSurface,
     },
     gpu::GPUContext,
@@ -24,12 +24,7 @@ fn draw_shapes(recorder: &mut PictureRecorder) {
     paint.color = Color::from_rgba_u8(0x0F, 0x9D, 0x58, 0xFF);
     recorder.draw_circle(180.0, 50.0, 25.0, paint);
 
-    paint.style = Style::Stroke {
-        width: 4.0,
-        miter_limit: 4.0,
-        cap: Default::default(),
-        join: Default::default(),
-    };
+    paint.style = Stroke::default().with_width(4.0).into();
     paint.color = Color::from_rgba_u8(0xF4, 0xB4, 0x0, 0xFF);
 
     let mut rrect = RRect::from_rect_xy(rect, 10.0, 10.0);
@@ -54,12 +49,10 @@ fn draw_round_rect(recorder: &mut PictureRecorder) {
     let fill_paint = Paint::new();
     let mut stroke_paint = Paint::new();
 
-    stroke_paint.style = Style::Stroke {
-        width: 15.0,
-        miter_limit: 4.0,
-        cap: Default::default(),
-        join: StrokeJoin::Round,
-    };
+    stroke_paint.style = Stroke::default()
+        .with_width(15.0)
+        .with_join(StrokeJoin::Round)
+        .into();
 
     let radii = [
         Point::from(0.0, 20.0),

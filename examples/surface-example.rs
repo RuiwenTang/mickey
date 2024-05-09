@@ -2,8 +2,8 @@ mod common;
 
 use rskity::{
     core::{
-        Color, Paint, Path, PathFillType, Picture, PictureRecorder, Point, Rect, StrokeCap,
-        StrokeJoin, Style, Surface as GPUSurface,
+        Color, Paint, Path, PathFillType, Picture, PictureRecorder, Point, Rect, Stroke, StrokeCap,
+        StrokeJoin, Surface as GPUSurface,
     },
     gpu::GPUContext,
 };
@@ -79,12 +79,11 @@ impl common::Renderer for SurfaceExample {
 
         let mut paint = Paint::new();
         paint.color = Color::red().with_alpha(0.3);
-        paint.style = Style::Stroke {
-            width: 20.0,
-            miter_limit: 4.0,
-            cap: StrokeCap::Square,
-            join: StrokeJoin::Round,
-        };
+        paint.style = Stroke::default()
+            .with_width(20.0)
+            .with_cap(StrokeCap::Square)
+            .with_join(StrokeJoin::Round)
+            .into();
 
         let line = Path::new()
             .move_to(10.0, 10.0)
@@ -98,12 +97,10 @@ impl common::Renderer for SurfaceExample {
 
         recorder.draw_path(line, paint);
 
-        paint.style = Style::Stroke {
-            width: 5.0,
-            miter_limit: 4.0,
-            cap: StrokeCap::Square,
-            join: StrokeJoin::Miter,
-        };
+        paint.style = Stroke::default()
+            .with_width(5.0)
+            .with_cap(StrokeCap::Square)
+            .into();
         recorder.draw_rect(&Rect::from_xywh(50.0, 200.0, 100.0, 100.0), paint);
 
         self.picture = Some(recorder.finish_record());
