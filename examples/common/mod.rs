@@ -44,10 +44,13 @@ impl App {
         let (adapter, device, queue) = self.request_device_and_queue(&instance, &surface);
 
         let size = window.inner_size();
-        let config = surface
+        let mut config = surface
             .get_default_config(&adapter, size.width, size.height)
             .unwrap();
 
+        // make sure the format is xxxUnorm
+        config.format = wgpu::TextureFormat::Bgra8Unorm;
+        config.view_formats = vec![wgpu::TextureFormat::Bgra8Unorm];
         surface.configure(&device, &config);
 
         render.on_init(config.format, &device, &queue);

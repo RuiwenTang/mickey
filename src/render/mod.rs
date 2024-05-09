@@ -284,6 +284,9 @@ impl Renderer for PathRenderer {
         context: &'a GPUContext,
         device: &wgpu::Device,
     ) -> Vec<Command<'a>> {
+        if self.vertex_range.is_empty() || self.index_range.is_empty() {
+            return vec![];
+        }
         let pipeline = context.get_pipeline(
             self.fragment.get_pipeline_name(),
             self.format,

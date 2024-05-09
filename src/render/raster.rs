@@ -72,6 +72,7 @@ impl PathFill {
                     Orientation::LINEAR => {
                         points.last_mut().unwrap().x = curr_pt.x;
                         points.last_mut().unwrap().y = curr_pt.y;
+                        prev_pt = curr_pt;
                         continue;
                     }
                     Orientation::CW => front_count += 1,

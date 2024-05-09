@@ -1,6 +1,6 @@
 use super::{
-    geometry::{CubicCoeff, QuadCoeff},
-    Point, Rect,
+    geometry::{ConicCoeff, CubicCoeff, QuadCoeff, FLOAT_ROOT2_OVER2},
+    Point, RRect, Rect,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -8,36 +8,52 @@ pub enum PathVerb {
     MoveTo(Point),
     LineTo(Point),
     QuadTo(Point, Point),
+    ConicTo(Point, Point, f32),
     CubicTo(Point, Point, Point),
     Close,
 }
 
 /// The fill type of a path.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum PathFillType {
     /// Specifies that "inside" is computed by a non-zero sum of signed edge crossings
+    #[default]
     Winding,
     /// Specifies that "inside" is computed by an odd number of edge crossings
     EvenOdd,
 }
 
-impl Default for PathFillType {
-    fn default() -> Self {
-        Self::Winding
-    }
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PathDirection {
+    /// The path is drawn in the clockwise direction.
+    #[default]
+    Clockwise,
+    /// The path is drawn in the counter-clockwise direction.
+    CounterClockwise,
 }
 
 struct PointIterator {
     pts: Vec<Point>,
     current: usize,
+    advance: usize,
 }
 
 impl PointIterator {
-    fn new(pts: Vec<Point>) -> Self {
-        Self { pts, current: 0 }
+    fn new_direction_start(pts: Vec<Point>, direction: PathDirection, start: usize) -> Self {
+        let count = pts.len();
+
+        Self {
+            pts,
+            current: (start % count),
+            advance: if direction == PathDirection::Clockwise {
+                1
+            } else {
+                count - 1
+            },
+        }
     }
 
-    fn from_rect(rect: &Rect) -> Self {
+    fn from_rect_dir_start(rect: &Rect, direction: PathDirection, start: usize) -> Self {
         let mut pts = Vec::new();
         pts.push(Point {
             x: rect.left,
@@ -56,22 +72,65 @@ impl PointIterator {
             y: rect.bottom,
         });
 
-        Self::new(pts)
+        Self::new_direction_start(pts, direction, start)
     }
-}
 
-impl Iterator for PointIterator {
-    type Item = Point;
+    fn from_oval_dir_start(rect: &Rect, direction: PathDirection, start: usize) -> Self {
+        let mut pts = Vec::new();
+        let cx = rect.center().x;
+        let cy = rect.center().y;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current >= self.pts.len() {
-            return None;
-        }
+        pts.push(Point { x: cx, y: rect.top });
+        pts.push(Point {
+            x: rect.right,
+            y: cy,
+        });
+        pts.push(Point {
+            x: cx,
+            y: rect.bottom,
+        });
+        pts.push(Point {
+            x: rect.left,
+            y: cy,
+        });
+
+        Self::new_direction_start(pts, direction, start)
+    }
+
+    pub fn from_rrect_dir_start(rrect: &RRect, direction: PathDirection, start: usize) -> Self {
+        let bounds = rrect.bounds();
+        let l = bounds.left;
+        let t = bounds.top;
+        let r = bounds.right;
+        let b = bounds.bottom;
+
+        let mut pts = Vec::new();
+
+        pts.push(Point::from(l + rrect.radii[0].x, t));
+        pts.push(Point::from(r - rrect.radii[1].x, t));
+        pts.push(Point::from(r, t + rrect.radii[1].y));
+        pts.push(Point::from(r, b - rrect.radii[2].y));
+        pts.push(Point::from(r - rrect.radii[2].x, b));
+        pts.push(Point::from(l + rrect.radii[3].x, b));
+        pts.push(Point::from(l, b - rrect.radii[3].y));
+        pts.push(Point::from(l, t + rrect.radii[0].y));
+
+        Self::new_direction_start(pts, direction, start)
+    }
+
+    pub(crate) fn current(&self) -> Point {
+        assert!(self.current < self.pts.len());
+
+        return self.pts[self.current];
+    }
+
+    fn next(&mut self) -> Point {
+        let n = self.pts.len();
+        self.current = (self.current + self.advance) % n;
 
         let pt = self.pts[self.current];
-        self.current += 1;
 
-        return Some(pt);
+        return pt;
     }
 }
 
@@ -171,6 +230,28 @@ impl Path {
         self
     }
 
+    /// Adds conic from last point towards (x1, y1), to (x2, y2), with weight w.
+    /// If Path is empty or last verb is PathVerb::Close, last point is set to (0, 0) before adding conic.
+    pub fn conic_to(mut self, x1: f32, y1: f32, x2: f32, y2: f32, w: f32) -> Self {
+        self.inject_move_to_if_needed();
+
+        self.verts.push(PathVerb::ConicTo(
+            Point { x: x1, y: y1 },
+            Point { x: x2, y: y2 },
+            w,
+        ));
+        self
+    }
+
+    /// Adds conic from last point towards `ctr`, to `end`, with weight `w`.
+    /// If Path is empty or last verb is PathVerb::Close, last point is set to (0, 0) before adding conic.
+    pub fn conic_to_point(mut self, ctr: Point, end: Point, w: f32) -> Self {
+        self.inject_move_to_if_needed();
+
+        self.verts.push(PathVerb::ConicTo(ctr, end, w));
+        self
+    }
+
     /// Adds cubic from last point towards (x1, y1), then towards (x2, y2), ending at (x3, y3)
     /// If Path is empty or last verb is PathVerb::Close, last point is set to (0, 0) before adding cubic.
     pub fn cubic_to(mut self, x1: f32, y1: f32, x2: f32, y2: f32, x3: f32, y3: f32) -> Self {
@@ -193,21 +274,154 @@ impl Path {
         self
     }
 
-    /// Adds a new contour to the path, defined by the Rect.
+    /// Adds a new contour to the path, defined by the Rect. Start at index 0 and with default direction Clockwise.
     /// The verbs added to the path will be:
     /// MoveTo, LineTo, LineTo, LineTo, Close
     pub fn add_rect(self, rect: &Rect) -> Self {
+        self.add_rect_dir_start(rect, Default::default(), 0)
+    }
+
+    /// Adds a new contour to the path, defined by the Rect.
+    /// The verbs added to the path will be:
+    /// MoveTo, LineTo, LineTo, LineTo, Close
+    ///
+    /// # Arguments
+    ///
+    /// * `rect` the bounds of rectangle added
+    /// * `dir` the direction to wind rectangle
+    /// * `start` the initial point of rectangle
+    pub fn add_rect_dir_start(self, rect: &Rect, dir: PathDirection, start: usize) -> Self {
         if rect.is_empty() {
             return self;
         }
 
-        let mut iter = PointIterator::from_rect(rect);
+        let mut iter = PointIterator::from_rect_dir_start(rect, dir, start);
 
-        self.move_to_point(iter.next().unwrap())
-            .line_to_point(iter.next().unwrap())
-            .line_to_point(iter.next().unwrap())
-            .line_to_point(iter.next().unwrap())
+        self.move_to_point(iter.next())
+            .line_to_point(iter.next())
+            .line_to_point(iter.next())
+            .line_to_point(iter.next())
             .close()
+    }
+
+    /// Adds oval to Path with default PathDirection::Clockwise and start at index 1.
+    /// The verbs added to the path will be:
+    /// MoveTo, CubicTo, CubicTo, CubicTo, CubicTo, Close.
+    ///
+    /// # Arguments
+    ///
+    /// * `oval` the bounds of ellipse added
+    pub fn add_oval(self, oval: &Rect) -> Self {
+        self.add_oval_dir_start(oval, Default::default(), 1)
+    }
+
+    /// Adds RRect to Path.
+    ///
+    /// # Arguments
+    ///
+    /// * `oval` the bounds of RRect added
+    /// * `dir` the direction to wind ellipse
+    /// * `start` the initial point of ellipse
+    pub fn add_oval_dir_start(self, oval: &Rect, dir: PathDirection, start: usize) -> Self {
+        if oval.is_empty() {
+            return self;
+        }
+
+        let mut oval_iter = PointIterator::from_oval_dir_start(oval, dir, start);
+        let mut rect_iter = PointIterator::from_rect_dir_start(oval, dir, start);
+
+        let weight = FLOAT_ROOT2_OVER2;
+
+        return self
+            .move_to_point(oval_iter.current())
+            .conic_to_point(rect_iter.next(), oval_iter.next(), weight)
+            .conic_to_point(rect_iter.next(), oval_iter.next(), weight)
+            .conic_to_point(rect_iter.next(), oval_iter.next(), weight)
+            .conic_to_point(rect_iter.next(), oval_iter.next(), weight)
+            .close();
+    }
+
+    /// Adds RRect to Path. With given direction and start point.
+    ///
+    /// # Arguments
+    ///
+    /// * `rrect` the round rect to add which defines the bounds and radii
+    /// * `dir` the direction to wind ellipse
+    /// * `start` the initial point of ellipse
+    pub fn add_rrect_dir_start(mut self, rrect: &RRect, dir: PathDirection, start: usize) -> Self {
+        if rrect.is_empty() {
+            return self;
+        }
+
+        if rrect.is_rect() {
+            return self.add_rect_dir_start(&rrect.bounds(), dir, (start + 1) / 2);
+        }
+
+        if rrect.is_oval() {
+            return self.add_oval_dir_start(&rrect.bounds(), dir, start / 2);
+        }
+
+        let start_with_conic = ((start & 1) == 1) == (dir == PathDirection::Clockwise);
+        let weight = FLOAT_ROOT2_OVER2;
+
+        let mut rrect_iter = PointIterator::from_rrect_dir_start(rrect, dir, start);
+        let rect_start_index = start / 2
+            + if dir == PathDirection::Clockwise {
+                0
+            } else {
+                1
+            };
+        let mut rect_iter =
+            PointIterator::from_rect_dir_start(&rrect.bounds(), dir, rect_start_index);
+
+        self = self.move_to_point(rrect_iter.current());
+
+        if start_with_conic {
+            for _ in 0..3 {
+                self = self
+                    .conic_to_point(rect_iter.next(), rrect_iter.next(), weight)
+                    .line_to_point(rrect_iter.next());
+            }
+
+            self = self.conic_to_point(rect_iter.next(), rrect_iter.next(), weight);
+        } else {
+            for _ in 0..4 {
+                self = self.line_to_point(rrect_iter.next()).conic_to_point(
+                    rect_iter.next(),
+                    rrect_iter.next(),
+                    weight,
+                );
+            }
+        }
+
+        self.close()
+    }
+
+    /// Adds RRect to Path. With given direction.
+    /// The start index is 6 if PathDirection::Clockwise, 7 otherwise.
+    /// # Arguments
+    ///
+    /// * `rrect` the round rect to add which defines the bounds and radii
+    /// * `dir` the direction to wind the round rect
+    pub fn add_rrect_dir(self, rrect: &RRect, dir: PathDirection) -> Self {
+        self.add_rrect_dir_start(
+            rrect,
+            dir,
+            if dir == PathDirection::Clockwise {
+                6
+            } else {
+                7
+            },
+        )
+    }
+
+    /// Adds RRect to Path. With default PathDirection::Clockwise.
+    /// The start index is 6 if PathDirection::Clockwise, 7 otherwise.
+    /// # Arguments
+    ///
+    /// * `rrect` the round rect to add which defines the bounds and radii
+    pub fn add_rrect(self, rrect: &RRect) -> Self {
+        self.add_rrect_dir(rrect, Default::default())
     }
 
     /// Appends PathVerb::Close to Path.
@@ -343,6 +557,24 @@ impl<'a> PolylineBuilder<'a> {
                     for step in 0..(CURVE_STEP as i32) {
                         let t = (step as f32 + 1.0) / CURVE_STEP;
                         contours.last_mut().unwrap().add_point(quad.eval(t));
+                    }
+                }
+                PathVerb::ConicTo(p2, p3, weight) => {
+                    let conic = ConicCoeff::from(
+                        contours
+                            .last()
+                            .expect("Not create contour")
+                            .last_point()
+                            .expect("Not start contour"),
+                        p2,
+                        p3,
+                        *weight,
+                    );
+
+                    // TODO: flatten curve dynamic with line count
+                    for step in 0..(CURVE_STEP as i32) {
+                        let t = (step as f32 + 1.0) / CURVE_STEP;
+                        contours.last_mut().unwrap().add_point(conic.eval(t));
                     }
                 }
                 PathVerb::CubicTo(p2, p3, p4) => {

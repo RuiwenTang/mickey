@@ -6,7 +6,7 @@ use crate::render::{
     PathRenderer, Raster, Renderer,
 };
 
-use super::{state::State, Paint, Path, Rect, Style};
+use super::{state::State, Paint, Path, RRect, Rect, Style};
 
 pub(crate) enum DrawCommand {
     DrawPath(Path, Paint),
@@ -101,6 +101,42 @@ impl PictureRecorder {
     /// * `paint` the paint controls the styling when drawing the rect
     pub fn draw_rect(&mut self, rect: &Rect, paint: Paint) {
         self.draw_path(Path::new().add_rect(rect), paint);
+    }
+
+    /// Draws oval with current clip and transform.
+    ///
+    /// # Arguments
+    ///
+    /// * `rect` the RoundRect to draw
+    /// * `paint` the paint controls the styling when drawing the oval
+    pub fn draw_rrect(&mut self, rect: &RRect, paint: Paint) {
+        self.draw_path(Path::new().add_rrect(rect), paint);
+    }
+
+    /// Draws oval with current clip and transform.
+    ///
+    /// # Arguments
+    ///
+    /// * `rect` the bounds of ellipse to draw
+    /// * `paint` the paint controls the styling when drawing the oval
+    pub fn draw_oval(&mut self, rect: &Rect, paint: Paint) {
+        self.draw_path(Path::new().add_oval(rect), paint);
+    }
+
+    /// Draws circle with current clip and transform.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` the x coordinate of the center of the circle
+    /// * `cy` the y coordinate of the center of the circle
+    /// * `radius` the radius of the circle
+    pub fn draw_circle(&mut self, cx: f32, cy: f32, radius: f32, paint: Paint) {
+        if radius <= 0.0 {
+            return;
+        }
+
+        let oval = Rect::from_xywh(cx - radius, cy - radius, radius * 2.0, radius * 2.0);
+        self.draw_oval(&oval, paint);
     }
 
     /// Save current transform matrix and clip state

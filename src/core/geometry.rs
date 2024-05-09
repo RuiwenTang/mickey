@@ -2,6 +2,8 @@ use nalgebra::Vector2;
 
 use super::Point;
 
+pub(crate) const FLOAT_ROOT2_OVER2: f32 = 0.707106781;
+
 /// used for eval(t) = a * t ^ 2 + b * t + c
 pub(crate) struct QuadCoeff {
     a: Vector2<f64>,
@@ -102,6 +104,55 @@ impl CubicCoeff {
         Point {
             x: p.x as f32,
             y: p.y as f32,
+        }
+    }
+}
+
+/// quad curve with weight
+pub(crate) struct ConicCoeff {
+    numer: QuadCoeff,
+    denom: QuadCoeff,
+}
+
+impl ConicCoeff {
+    pub(crate) fn from(p1: &Point, p2: &Point, p3: &Point, w: f32) -> Self {
+        let p1 = Vector2::new(p1.x as f64, p1.y as f64);
+        let p2 = Vector2::new(p2.x as f64, p2.y as f64);
+        let p3 = Vector2::new(p3.x as f64, p3.y as f64);
+
+        let w = w as f64;
+
+        let p2w = p2 * w;
+
+        let c1 = p1;
+        let a1 = p3 - p2w * 2.0 + p1;
+        let b1 = (p2w - p1) * 2.0;
+
+        let c2 = Vector2::<f64>::new(1.0, 1.0);
+        let b2 = (Vector2::<f64>::new(w, w) - c2) * 2.0;
+        let a2 = Vector2::<f64>::new(0.0, 0.0) - b2;
+
+        Self {
+            numer: QuadCoeff {
+                a: a1,
+                b: b1,
+                c: c1,
+            },
+            denom: QuadCoeff {
+                a: a2,
+                b: b2,
+                c: c2,
+            },
+        }
+    }
+
+    pub(crate) fn eval(&self, t: f32) -> Point {
+        let n = self.numer.eval(t);
+        let d = self.denom.eval(t);
+
+        Point {
+            x: n.x / d.x,
+            y: n.y / d.y,
         }
     }
 }
