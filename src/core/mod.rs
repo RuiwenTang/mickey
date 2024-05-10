@@ -10,7 +10,7 @@ use bytemuck::{Pod, Zeroable};
 pub use color::Color;
 pub use paint::{Paint, Stroke, StrokeCap, StrokeJoin, Style};
 pub use path::{Path, PathDirection, PathFillType};
-pub use picture::{Picture, PictureRecorder};
+pub use picture::{ClipOp, Picture, PictureRecorder};
 pub use surface::Surface;
 
 #[repr(C)]

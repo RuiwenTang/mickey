@@ -36,7 +36,7 @@ impl Orientation {
 }
 
 pub(crate) struct PathFill {
-    path: Path,
+    pub(crate) path: Path,
 }
 
 impl PathFill {

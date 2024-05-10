@@ -1,15 +1,26 @@
 use nalgebra::Matrix4;
 
 use crate::render::{
-    fragment::SolidColorFragment,
+    fragment::{ClipMaskFragment, SolidColorFragment},
     raster::{PathFill, PathStroke},
-    PathRenderer, Raster, Renderer,
+    PathCliper, PathRenderer, Raster, Renderer,
 };
 
 use super::{state::State, Paint, Path, RRect, Rect, Style};
 
+/// Defines the type of operation performed by a clip operation.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+pub enum ClipOp {
+    /// The clip area is the intersection of the current clip area and the specified path.
+    #[default]
+    Intersect,
+    /// The clip area is the difference of the current clip area and the specified path.
+    Difference,
+}
+
 pub(crate) enum DrawCommand {
     DrawPath(Path, Paint),
+    ClipPath(Path, ClipOp),
 }
 
 pub(crate) struct Draw {
@@ -50,6 +61,19 @@ impl Draw {
                         vh,
                         self.transform.clone(),
                     )),
+                    (self.depth + depth_offset) as f32,
+                ))
+            }
+            DrawCommand::ClipPath(path, op) => {
+                let raster = PathFill::new(path.clone());
+                let fragment = ClipMaskFragment::new(vw, vh, self.transform.clone());
+
+                Box::new(PathCliper::new(
+                    target_format,
+                    anti_alias,
+                    raster,
+                    fragment,
+                    *op,
                     (self.depth + depth_offset) as f32,
                 ))
             }
@@ -140,6 +164,34 @@ impl PictureRecorder {
         self.draw_oval(&oval, paint);
     }
 
+    /// Clips the current context with the specified path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` the path to clip
+    /// * `op` the type of operation performed by the clip
+    pub fn clip_path(&mut self, path: Path, op: ClipOp) {
+        self.draws.push(Draw {
+            depth: 0,
+            command: DrawCommand::ClipPath(path, op),
+            transform: self.state.current_transform(),
+        });
+
+        let last_index = self.draws.len() - 1;
+
+        self.state.save_clip(last_index);
+    }
+
+    /// Clips the current context with the specified rect.
+    ///
+    /// # Arguments
+    ///
+    /// * `rect` the rect to clip
+    /// * `op` the type of operation performed by the clip
+    pub fn clip_rect(&mut self, rect: &Rect, op: ClipOp) {
+        self.clip_path(Path::new().add_rect(rect), op);
+    }
+
     /// Save current transform matrix and clip state
     pub fn save(&mut self) {
         self.state.save();
@@ -147,7 +199,18 @@ impl PictureRecorder {
 
     /// Restore the transform matrix and clip to the last saved state
     pub fn restore(&mut self) {
-        self.state.restore();
+        let clip_state = self.state.restore();
+
+        if clip_state.is_none() {
+            return;
+        }
+
+        let clip_state = clip_state.unwrap();
+
+        for i in clip_state.clip_op.iter().rev() {
+            self.current_depth += 1;
+            self.draws[*i].depth = self.current_depth;
+        }
     }
 
     /// Translates transform matrix by dx alone the x-axis and dy along the y-axis
@@ -161,7 +224,22 @@ impl PictureRecorder {
     }
 
     /// Finish record and generate a Picture instance with recorded drawing commands
-    pub fn finish_record(self) -> Picture {
+    pub fn finish_record(mut self) -> Picture {
+        loop {
+            let clip_state = self.state.pop_clip_stack();
+
+            if clip_state.is_none() {
+                break;
+            }
+
+            let clip_state = clip_state.unwrap();
+
+            for i in clip_state.clip_op.iter().rev() {
+                self.current_depth += 1;
+                self.draws[*i].depth = self.current_depth;
+            }
+        }
+
         Picture { draws: self.draws }
     }
 }

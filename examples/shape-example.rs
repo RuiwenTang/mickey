@@ -1,7 +1,7 @@
 use rskity::{
     core::{
-        Color, Paint, Picture, PictureRecorder, Point, RRect, Rect, Stroke, StrokeJoin, Style,
-        Surface as GPUSurface,
+        ClipOp, Color, Paint, Path, PathFillType, Picture, PictureRecorder, Point, RRect, Rect,
+        Stroke, StrokeJoin, Style, Surface as GPUSurface,
     },
     gpu::GPUContext,
 };
@@ -80,6 +80,57 @@ fn draw_round_rect(recorder: &mut PictureRecorder) {
     recorder.restore();
 }
 
+/// same as https://fiddle.skia.org/c/@Canvas_clipPath_2
+fn draw_clip_path(recorder: &mut PictureRecorder) {
+    let paint = Paint::new();
+
+    let mut path = Path::new()
+        .add_rect(&Rect::from_ltrb(20.0, 15.0, 100.0, 95.0))
+        .add_rect(&Rect::from_ltrb(50.0, 65.0, 130.0, 135.0));
+
+    recorder.save();
+
+    recorder.clip_path(path.clone(), ClipOp::Intersect);
+
+    recorder.draw_circle(70.0, 85.0, 60.0, paint);
+
+    recorder.restore();
+
+    recorder.save();
+
+    recorder.translate(100.0, 100.0);
+
+    path.fill_type = PathFillType::EvenOdd;
+
+    recorder.clip_path(path, ClipOp::Intersect);
+    recorder.draw_circle(70.0, 85.0, 60.0, paint);
+
+    recorder.restore();
+}
+
+/// same as https://fiddle.skia.org/c/@Canvas_clipRect_2
+fn draw_clip_rect(recorder: &mut PictureRecorder) {
+    let paint = Paint::new();
+
+    let rect = Rect::from_xywh(0.0, 0.0, 90.0, 120.0);
+
+    recorder.save();
+
+    recorder.clip_rect(&rect, ClipOp::Intersect);
+    recorder.draw_circle(100.0, 100.0, 60.0, paint);
+
+    recorder.restore();
+
+    recorder.save();
+
+    recorder.translate(80.0, 0.0);
+
+    recorder.clip_rect(&rect, ClipOp::Difference);
+    recorder.draw_circle(100.0, 100.0, 60.0, paint);
+
+    recorder.restore();
+}
+
 struct ShapeRender {
     context: Option<GPUContext>,
     picture: Option<Picture>,
@@ -110,6 +161,16 @@ impl ShapeRender {
 
         draw_round_rect(&mut recorder);
 
+        recorder.restore();
+
+        recorder.save();
+        recorder.translate(0.0, 300.0);
+        draw_clip_path(&mut recorder);
+        recorder.restore();
+
+        recorder.save();
+        recorder.translate(300.0, 300.0);
+        draw_clip_rect(&mut recorder);
         recorder.restore();
 
         return recorder.finish_record();

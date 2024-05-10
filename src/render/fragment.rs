@@ -3,7 +3,7 @@ use std::ops::Range;
 use nalgebra::{Matrix4, Vector4};
 
 use crate::{
-    core::Color,
+    core::{picture::ClipOp, Color, Rect},
     gpu::{
         buffer::StageBuffer,
         context::PipelineGenerater,
@@ -15,6 +15,231 @@ use super::Fragment;
 
 pub(crate) const SOLID_PIPELINE_NAME: &str = "SolidColor";
 pub(crate) const NON_COLOR_PIPELINE_NAME: &str = "NonColor";
+
+pub(crate) fn state_for_convex_polygon() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: false,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Always,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Keep,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Always,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Keep,
+            },
+            read_mask: 0xff,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_complex_winding() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: false,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            read_mask: 0xff,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_complex_even_odd() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: false,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            read_mask: 0x01,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_no_overlap() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Always,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Keep,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Always,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Keep,
+            },
+            read_mask: 0xff,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_stencil_mask() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: false,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Always,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::IncrementWrap,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Always,
+                fail_op: wgpu::StencilOperation::Keep,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::DecrementWrap,
+            },
+            read_mask: 0xff,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_clip_intersect() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Equal,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Equal,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            read_mask: 0xff,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_clip_even_odd_intersect() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Equal,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::Equal,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            read_mask: 0x01,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_clip_difference() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            read_mask: 0xff,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
+
+pub(crate) fn state_for_clip_even_odd_difference() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            back: wgpu::StencilFaceState {
+                compare: wgpu::CompareFunction::NotEqual,
+                fail_op: wgpu::StencilOperation::Replace,
+                depth_fail_op: wgpu::StencilOperation::Keep,
+                pass_op: wgpu::StencilOperation::Replace,
+            },
+            read_mask: 0x01,
+            write_mask: 0xff,
+        },
+        bias: Default::default(),
+    }
+}
 
 struct TransformGroup {
     mvp: Matrix4<f32>,
@@ -167,6 +392,92 @@ impl Fragment for SolidColorFragment {
     }
 }
 
+pub(crate) struct ClipMaskFragment {
+    transform: TransformGroup,
+    identity: TransformGroup,
+    pub(crate) bounds: Rect,
+}
+
+impl ClipMaskFragment {
+    pub(crate) fn new(vw: f32, vh: f32, transform: Matrix4<f32>) -> Self {
+        Self {
+            transform: TransformGroup::new(
+                Matrix4::new_orthographic(0.0, vw, vh, 0.0, -1000.0, 1000.0),
+                transform,
+                Vector4::new(0.0, 0.0, 0.0, 0.0),
+            ),
+            identity: TransformGroup::new(
+                Matrix4::new_orthographic(0.0, vw, vh, 0.0, -1000.0, 1000.0),
+                Matrix4::identity(),
+                Vector4::new(0.0, 0.0, 0.0, 0.0),
+            ),
+            bounds: Rect::from_xywh(0.0, 0.0, vw, vh),
+        }
+    }
+
+    pub(crate) fn prepare(&mut self, depth: f32, op: ClipOp, buffer: &mut StageBuffer) {
+        self.transform.prepare(depth, buffer);
+
+        if op == ClipOp::Intersect {
+            self.identity.prepare(depth, buffer);
+        }
+    }
+
+    pub(crate) fn gen_transform_group<'a>(
+        &self,
+        device: &wgpu::Device,
+        buffer: &'a wgpu::Buffer,
+        pipeline: &'a Pipeline,
+    ) -> wgpu::BindGroup {
+        let group0_layout = pipeline
+            .get_group_layout(0)
+            .expect("Pipeline does not contains common transform slot");
+
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Clip Mask Transform Group"),
+            layout: &group0_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: buffer,
+                    offset: self.transform.get_buffer_range().start,
+                    size: wgpu::BufferSize::new(
+                        self.transform.get_buffer_range().end
+                            - self.transform.get_buffer_range().start,
+                    ),
+                }),
+            }],
+        })
+    }
+
+    pub(crate) fn gen_identity_group<'a>(
+        &self,
+        device: &wgpu::Device,
+        buffer: &'a wgpu::Buffer,
+        pipeline: &'a Pipeline,
+    ) -> wgpu::BindGroup {
+        let group0_layout = pipeline
+            .get_group_layout(0)
+            .expect("Pipeline does not contains common transform slot");
+
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Clip Mask Identity Group"),
+            layout: &group0_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: buffer,
+                    offset: self.identity.get_buffer_range().start,
+                    size: wgpu::BufferSize::new(
+                        self.identity.get_buffer_range().end
+                            - self.identity.get_buffer_range().start,
+                    ),
+                }),
+            }],
+        })
+    }
+}
+
 pub(crate) struct ColorPipelineGenerator {
     color_writable: bool,
     shader: wgpu::ShaderModule,
@@ -185,97 +496,13 @@ impl ColorPipelineGenerator {
             shader,
             states: vec![
                 // for Convex Polygon no stencil test
-                wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth24PlusStencil8,
-                    depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Greater,
-                    stencil: wgpu::StencilState {
-                        front: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::Always,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Keep,
-                        },
-                        back: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::Always,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Keep,
-                        },
-                        read_mask: 0xff,
-                        write_mask: 0xff,
-                    },
-                    bias: Default::default(),
-                },
+                state_for_convex_polygon(),
                 // for Stencil and Cover winding fill
-                wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth24PlusStencil8,
-                    depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Greater,
-                    stencil: wgpu::StencilState {
-                        front: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::NotEqual,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Replace,
-                        },
-                        back: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::NotEqual,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Replace,
-                        },
-                        read_mask: 0xff,
-                        write_mask: 0xff,
-                    },
-                    bias: Default::default(),
-                },
+                state_for_complex_winding(),
                 // for Stencil and Cover even-odd fill
-                wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth24PlusStencil8,
-                    depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Greater,
-                    stencil: wgpu::StencilState {
-                        front: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::NotEqual,
-                            fail_op: wgpu::StencilOperation::Replace,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Replace,
-                        },
-                        back: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::NotEqual,
-                            fail_op: wgpu::StencilOperation::Replace,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Replace,
-                        },
-                        read_mask: 0x01,
-                        write_mask: 0xff,
-                    },
-                    bias: Default::default(),
-                },
+                state_for_complex_even_odd(),
                 // for stroke no-overlap fill
-                wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth24PlusStencil8,
-                    depth_write_enabled: true,
-                    depth_compare: wgpu::CompareFunction::Greater,
-                    stencil: wgpu::StencilState {
-                        front: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::Always,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Keep,
-                        },
-                        back: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::Always,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::Keep,
-                        },
-                        read_mask: 0xff,
-                        write_mask: 0xff,
-                    },
-                    bias: Default::default(),
-                },
+                state_for_no_overlap(),
             ],
             groups: vec![
                 // group 0
@@ -318,28 +545,15 @@ impl ColorPipelineGenerator {
             shader,
             states: vec![
                 // for Complex Polygon stencil mask
-                wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth24PlusStencil8,
-                    depth_write_enabled: false,
-                    depth_compare: wgpu::CompareFunction::Greater,
-                    stencil: wgpu::StencilState {
-                        front: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::Always,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::IncrementWrap,
-                        },
-                        back: wgpu::StencilFaceState {
-                            compare: wgpu::CompareFunction::Always,
-                            fail_op: wgpu::StencilOperation::Keep,
-                            depth_fail_op: wgpu::StencilOperation::Keep,
-                            pass_op: wgpu::StencilOperation::DecrementWrap,
-                        },
-                        read_mask: 0xff,
-                        write_mask: 0xff,
-                    },
-                    bias: Default::default(),
-                },
+                state_for_stencil_mask(),
+                // for intersect clip mask
+                state_for_clip_intersect(),
+                // for even-odd intersect clip mask
+                state_for_clip_even_odd_intersect(),
+                // for difference clip mask
+                state_for_clip_difference(),
+                // for even-odd difference clip mask
+                state_for_clip_even_odd_difference(),
             ],
             groups: vec![
                 // group 0
