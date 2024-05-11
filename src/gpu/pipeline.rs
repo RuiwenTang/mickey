@@ -127,6 +127,7 @@ impl<'a> PipelineBuilder<'a> {
                         vertex: wgpu::VertexState {
                             module: shader,
                             entry_point: "vs_main",
+                            compilation_options: Default::default(),
                             buffers: self.buffers.as_slice(),
                         },
                         primitive: wgpu::PrimitiveState {
@@ -147,6 +148,7 @@ impl<'a> PipelineBuilder<'a> {
                         fragment: Some(wgpu::FragmentState {
                             module: shader,
                             entry_point: "fs_main",
+                            compilation_options: Default::default(),
                             targets: &[Some(color_target.clone())],
                         }),
                         multiview: None,
