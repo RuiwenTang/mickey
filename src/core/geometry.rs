@@ -3,6 +3,7 @@ use nalgebra::Vector2;
 use super::Point;
 
 pub(crate) const FLOAT_ROOT2_OVER2: f32 = 0.707106781;
+pub(crate) const PI: f32 = 3.1415926;
 
 /// used for eval(t) = a * t ^ 2 + b * t + c
 pub(crate) struct QuadCoeff {
@@ -49,6 +50,10 @@ pub(crate) fn dot_product(p: &Vector2<f64>, q: &Vector2<f64>) -> f64 {
 
 pub(crate) fn distance(p: &Vector2<f64>) -> f64 {
     (p.x * p.x + p.y * p.y).sqrt()
+}
+
+pub(crate) fn degree_to_radian(degree: f32) -> f32 {
+    degree * PI / 180.0
 }
 
 pub(crate) fn circle_interpolation(

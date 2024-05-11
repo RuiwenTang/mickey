@@ -1,5 +1,7 @@
 use nalgebra::{Matrix4, Vector3};
 
+use super::geometry::degree_to_radian;
+
 pub(crate) struct ClipState {
     pub(crate) clip_op: Vec<usize>,
 }
@@ -65,5 +67,31 @@ impl State {
 
         self.matrix_stack
             .push(current_matrix.unwrap() * Matrix4::new_translation(&Vector3::new(dx, dy, 0.0)));
+    }
+
+    pub(crate) fn rotate_at(&mut self, degree: f32, px: f32, py: f32) {
+        let current_matrix = self.matrix_stack.pop();
+        let rotate = Matrix4::new_rotation(Vector3::new(0.0, 0.0, degree_to_radian(degree)));
+        let pre = Matrix4::new_translation(&Vector3::new(-px, -py, 0.0));
+        let post = Matrix4::new_translation(&Vector3::new(px, py, 0.0));
+
+        self.matrix_stack
+            .push(current_matrix.unwrap() * post * rotate * pre);
+    }
+
+    pub(crate) fn rotate(&mut self, degree: f32) {
+        let current_matrix = self.matrix_stack.pop();
+        let rotate = Matrix4::new_rotation(Vector3::new(0.0, 0.0, degree_to_radian(degree)));
+
+        self.matrix_stack.push(current_matrix.unwrap() * rotate);
+    }
+
+    pub(crate) fn scale(&mut self, sx: f32, sy: f32) {
+        let current_matrix = self.matrix_stack.pop();
+        let s: Matrix4<f32> = Matrix4::new(
+            sx, 0.0, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        );
+
+        self.matrix_stack.push(current_matrix.unwrap() * s);
     }
 }

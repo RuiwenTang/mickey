@@ -223,6 +223,41 @@ impl PictureRecorder {
         self.state.translate(dx, dy);
     }
 
+    /// Rotate transform matrix by degree at point (px, py)
+    ///
+    /// # Arguments
+    ///
+    /// * `degree` degree to rotate on z-axis
+    /// * `px` x position of rotation center
+    /// * `py` y position of rotation center
+    pub fn rotate_at_xy(&mut self, degree: f32, px: f32, py: f32) {
+        self.state.rotate_at(degree, px, py);
+    }
+
+    /// Rotate transform matrix by degree at point (0.0, 0.0)
+    ///
+    /// # Arguments
+    ///
+    /// * `degree` degree to rotate on z-axis
+    pub fn rotate(&mut self, degree: f32) {
+        self.state.rotate(degree);
+    }
+
+    /// Scale transform matrix
+    ///
+    /// # Arguments
+    ///
+    /// * `sx` scale at x-axis must be positive
+    /// * `sy` scale at y-axis must be positive
+    pub fn scale(&mut self, sx: f32, sy: f32) {
+        if sx <= 0.0 || sy <= 0.0 {
+            // scale must be positive value
+            return;
+        }
+
+        self.state.scale(sx, sy);
+    }
+
     /// Finish record and generate a Picture instance with recorded drawing commands
     pub fn finish_record(mut self) -> Picture {
         loop {
