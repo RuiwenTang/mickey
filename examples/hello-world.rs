@@ -97,7 +97,29 @@ impl HelloTriangle {
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: None,
+            // this can triger wgpu Vulkan validation about dynamic state
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth24PlusStencil8,
+                depth_write_enabled: false,
+                depth_compare: wgpu::CompareFunction::Always,
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Always,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::IncrementWrap,
+                    },
+                    back: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Always,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::DecrementWrap,
+                    },
+                    read_mask: 0xff,
+                    write_mask: 0xff,
+                },
+                bias: Default::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -240,6 +262,23 @@ impl common::Renderer for HelloTriangle {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
+        let depth_stencil = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("depth stencil"),
+            size: wgpu::Extent3d {
+                width: texture.texture.width(),
+                height: texture.texture.height(),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            view_formats: &[wgpu::TextureFormat::Depth24PlusStencil8],
+        });
+
+        let depth_stencil_view = depth_stencil.create_view(&wgpu::TextureViewDescriptor::default());
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("OnScreen render pass"),
@@ -256,7 +295,14 @@ impl common::Renderer for HelloTriangle {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &depth_stencil_view,
+                    depth_ops: None,
+                    stencil_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
@@ -266,6 +312,8 @@ impl common::Renderer for HelloTriangle {
             render_pass.set_vertex_buffer(0, buffer.slice(0..matrix_offset));
 
             render_pass.set_bind_group(0, &groups[0], &[]);
+
+            render_pass.set_stencil_reference(0);
 
             render_pass.draw(0..3, 0..1);
         }
@@ -277,6 +325,7 @@ impl common::Renderer for HelloTriangle {
 }
 
 fn main() {
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("debug"));
     let app = App::new("Hello World", 800, 800);
 
     app.run(HelloTriangle::new());

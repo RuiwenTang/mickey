@@ -41,9 +41,10 @@ impl Draw {
         match &self.command {
             DrawCommand::DrawPath(path, paint) => {
                 let raster: Box<dyn Raster> = match paint.style {
-                    Style::Fill => Box::new(PathFill::new(path.clone())),
+                    Style::Fill => Box::new(PathFill::new(path.clone(), self.transform.clone())),
                     Style::Stroke(stroke) => Box::new(PathStroke::new(
                         path.clone(),
+                        self.transform.clone(),
                         stroke.width,
                         stroke.miter_limit,
                         stroke.cap,
@@ -65,7 +66,7 @@ impl Draw {
                 ))
             }
             DrawCommand::ClipPath(path, op) => {
-                let raster = PathFill::new(path.clone());
+                let raster = PathFill::new(path.clone(), self.transform.clone());
                 let fragment = ClipMaskFragment::new(vw, vh, self.transform.clone());
 
                 Box::new(PathCliper::new(

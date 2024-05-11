@@ -5,7 +5,7 @@ use crate::core::{
     path::{Contour, Path, PathFillType, PolylineBuilder},
     Point,
 };
-use nalgebra::{Point2, Vector2};
+use nalgebra::{Matrix4, Vector2};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Orientation {
@@ -16,9 +16,9 @@ enum Orientation {
 
 impl Orientation {
     pub(crate) fn from(a: &Point, b: &Point, c: &Point) -> Self {
-        let aa = Point2::<f64>::new(a.x as f64, a.y as f64);
-        let bb = Point2::<f64>::new(b.x as f64, b.y as f64);
-        let cc = Point2::<f64>::new(c.x as f64, c.y as f64);
+        let aa = Vector2::<f64>::new(a.x as f64, a.y as f64);
+        let bb = Vector2::<f64>::new(b.x as f64, b.y as f64);
+        let cc = Vector2::<f64>::new(c.x as f64, c.y as f64);
 
         let v1 = bb - aa;
         let v2 = cc - aa;
@@ -37,11 +37,12 @@ impl Orientation {
 
 pub(crate) struct PathFill {
     pub(crate) path: Path,
+    pub(crate) matrix: Matrix4<f32>,
 }
 
 impl PathFill {
-    pub(crate) fn new(path: Path) -> Self {
-        Self { path }
+    pub(crate) fn new(path: Path, matrix: Matrix4<f32>) -> Self {
+        Self { path, matrix }
     }
 
     fn do_raster(&self) -> (Vec<Point>, Vec<u32>, VertexMode) {
@@ -50,7 +51,7 @@ impl PathFill {
         let mut front_count = 0;
         let mut back_count = 0;
 
-        let polyline = PolylineBuilder::from(&self.path).build();
+        let polyline = PolylineBuilder::from(&self.path, &self.matrix).build();
 
         for contour in &polyline.contours {
             if contour.points.len() < 3 {
@@ -231,6 +232,7 @@ fn gen_round_mesh(
 
 pub(crate) struct PathStroke {
     path: Path,
+    matrix: Matrix4<f32>,
     stroke_width: f32,
     miter_limit: f32,
     cap: StrokeCap,
@@ -240,6 +242,7 @@ pub(crate) struct PathStroke {
 impl PathStroke {
     pub(crate) fn new(
         path: Path,
+        matrix: Matrix4<f32>,
         stroke_width: f32,
         miter_limit: f32,
         cap: StrokeCap,
@@ -247,6 +250,7 @@ impl PathStroke {
     ) -> Self {
         Self {
             path,
+            matrix,
             stroke_width,
             miter_limit,
             cap,
@@ -585,7 +589,7 @@ impl Raster for PathStroke {
         VertexMode,
         u32,
     ) {
-        let polyline = PolylineBuilder::from(&self.path).build();
+        let polyline = PolylineBuilder::from(&self.path, &self.matrix).build();
 
         let mut points: Vec<Point> = Vec::new();
         let mut indices: Vec<u32> = Vec::new();

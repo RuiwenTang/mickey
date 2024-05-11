@@ -1,5 +1,7 @@
+use nalgebra::Matrix4;
+
 use super::{
-    geometry::{ConicCoeff, CubicCoeff, QuadCoeff, FLOAT_ROOT2_OVER2},
+    geometry::{Coeff, ConicCoeff, CubicCoeff, QuadCoeff, FLOAT_ROOT2_OVER2},
     Point, RRect, Rect,
 };
 
@@ -447,7 +449,9 @@ impl Contour {
         }
     }
     pub(crate) fn add_point(&mut self, p: Point) {
-        self.points.push(p);
+        if self.points.is_empty() || self.points.last().unwrap() != &p {
+            self.points.push(p);
+        }
     }
 
     pub(crate) fn last_point(&self) -> Option<&Point> {
@@ -461,15 +465,15 @@ pub(crate) struct Polyline {
 
 pub(crate) struct PolylineBuilder<'a> {
     path: &'a Path,
+    matrix: &'a Matrix4<f32>,
     verbs: Vec<PathVerb>,
 }
 
-const CURVE_STEP: f32 = 32.0;
-
 impl<'a> PolylineBuilder<'a> {
-    pub(crate) fn from(path: &'a Path) -> Self {
+    pub(crate) fn from(path: &'a Path, matrix: &'a Matrix4<f32>) -> Self {
         Self {
             path: path,
+            matrix,
             verbs: Vec::new(),
         }
     }
@@ -543,56 +547,49 @@ impl<'a> PolylineBuilder<'a> {
                         .add_point(p.clone());
                 }
                 PathVerb::QuadTo(ctr, end) => {
-                    let quad = QuadCoeff::from(
-                        contours
-                            .last()
-                            .expect("Not create contour")
-                            .last_point()
-                            .expect("Contour not start"),
-                        ctr,
-                        end,
-                    );
+                    let p1 = contours
+                        .last()
+                        .expect("Not create contour")
+                        .last_point()
+                        .expect("Not start contour");
+                    let quad = QuadCoeff::from(p1, ctr, end);
+
+                    let stops = QuadCoeff::flatten(p1, ctr, end, &self.matrix);
 
                     // TODO: flatten curve dynamic with line count
-                    for step in 0..(CURVE_STEP as i32) {
-                        let t = (step as f32 + 1.0) / CURVE_STEP;
-                        contours.last_mut().unwrap().add_point(quad.eval(t));
+                    for step in stops {
+                        contours.last_mut().unwrap().add_point(quad.eval(step));
                     }
                 }
                 PathVerb::ConicTo(p2, p3, weight) => {
-                    let conic = ConicCoeff::from(
-                        contours
-                            .last()
-                            .expect("Not create contour")
-                            .last_point()
-                            .expect("Not start contour"),
-                        p2,
-                        p3,
-                        *weight,
-                    );
+                    let p1 = contours
+                        .last()
+                        .expect("Not create contour")
+                        .last_point()
+                        .expect("Not start contour");
+
+                    let conic = ConicCoeff::from(p1, p2, p3, *weight);
+
+                    let stops = ConicCoeff::flatten(p1, p2, p3, *weight, &self.matrix);
 
                     // TODO: flatten curve dynamic with line count
-                    for step in 0..(CURVE_STEP as i32) {
-                        let t = (step as f32 + 1.0) / CURVE_STEP;
-                        contours.last_mut().unwrap().add_point(conic.eval(t));
+                    for step in stops {
+                        contours.last_mut().unwrap().add_point(conic.eval(step));
                     }
                 }
                 PathVerb::CubicTo(p2, p3, p4) => {
-                    let cubic = CubicCoeff::from(
-                        contours
-                            .last()
-                            .expect("Not create contour")
-                            .last_point()
-                            .expect("Not start contour"),
-                        p2,
-                        p3,
-                        p4,
-                    );
+                    let p1 = contours
+                        .last()
+                        .expect("Not create contour")
+                        .last_point()
+                        .expect("Not start contour");
+                    let cubic = CubicCoeff::from(p1, p2, p3, p4);
+
+                    let stops = CubicCoeff::flatten(p1, p2, p3, p4, &self.matrix);
 
                     // TODO: flatten curve dynamic with line count
-                    for step in 0..(CURVE_STEP as i32) {
-                        let t = (step as f32 + 1.0) / CURVE_STEP;
-                        contours.last_mut().unwrap().add_point(cubic.eval(t));
+                    for step in stops {
+                        contours.last_mut().unwrap().add_point(cubic.eval(step));
                     }
                 }
                 PathVerb::Close => {

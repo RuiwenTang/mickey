@@ -1,9 +1,87 @@
-use nalgebra::Vector2;
+use std::usize;
+
+use nalgebra::{Matrix4, Vector2};
 
 use super::Point;
 
 pub(crate) const FLOAT_ROOT2_OVER2: f32 = 0.707106781;
 pub(crate) const PI: f32 = 3.1415926;
+
+fn pt_to_line(pt: &Point, start: &Point, end: &Point) -> f32 {
+    let p = Vector2::new(pt.x as f64, pt.y as f64);
+    let line_start = Vector2::new(start.x as f64, start.y as f64);
+    let line_end = Vector2::new(end.x as f64, end.y as f64);
+
+    let dxy = line_end - line_start;
+    let ab0 = p - line_start;
+
+    let number = dot_product(&dxy, &ab0);
+    let denom = dot_product(&dxy, &dxy);
+    let t = number / denom;
+
+    if t >= 0.0 && t <= 1.0 {
+        let hit = line_start * (1.0 - t) + line_end * t;
+
+        let dis = hit - p;
+        return distance(&dis) as f32;
+    } else {
+        let dis = p - line_start;
+        return distance(&dis) as f32;
+    }
+}
+
+fn flatten_enough(a: &Point, b: &Point, c: &Point) -> bool {
+    // let aa = Vector2::<f64>::new(a.x as f64, a.y as f64);
+    // let bb = Vector2::<f64>::new(b.x as f64, b.y as f64);
+    // let cc = Vector2::<f64>::new(c.x as f64, c.y as f64);
+
+    // let v1 = bb - aa;
+    // let v2 = cc - aa;
+
+    // let cross = v1.x * v2.y - v1.y * v2.x;
+
+    // return cross.abs() <= 4.0;
+    return pt_to_line(b, a, c) <= 0.1;
+}
+
+pub(crate) trait Coeff {
+    fn eval(&self, t: f32) -> Point;
+}
+
+fn flatten_recursive<T: Coeff>(
+    coeff: &T,
+    start: f32,
+    end: f32,
+    index: usize,
+    mut stops: Vec<f32>,
+) -> Vec<f32> {
+    if start == end {
+        return stops;
+    }
+
+    let t = (start + end) * 0.5;
+
+    let sp = coeff.eval(start);
+    let ep = coeff.eval(end);
+    let mp = coeff.eval(t);
+
+    if !flatten_enough(&sp, &mp, &ep) {
+        stops.insert(index, t);
+
+        stops = flatten_recursive(coeff, start, t, index, stops);
+
+        let mut next = index;
+        for i in (0..stops.len()).rev() {
+            if stops[i] == t {
+                next = i;
+                break;
+            }
+        }
+        stops = flatten_recursive(coeff, t, end, next + 1, stops);
+    }
+
+    return stops;
+}
 
 /// used for eval(t) = a * t ^ 2 + b * t + c
 pub(crate) struct QuadCoeff {
@@ -28,7 +106,25 @@ impl QuadCoeff {
         };
     }
 
-    pub(crate) fn eval(&self, t: f32) -> Point {
+    pub(crate) fn flatten(
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        transform: &Matrix4<f32>,
+    ) -> Vec<f32> {
+        let p1 = p1.transform(transform);
+        let p2 = p2.transform(transform);
+        let p3 = p3.transform(transform);
+        let coeff = QuadCoeff::from(&p1, &p2, &p3);
+
+        let stops: Vec<f32> = vec![0.0, 1.0];
+
+        return flatten_recursive(&coeff, 0.0, 1.0, 1, stops);
+    }
+}
+
+impl Coeff for QuadCoeff {
+    fn eval(&self, t: f32) -> Point {
         let tt = t as f64;
 
         let ret = (self.a * tt + self.b) * tt + self.c;
@@ -102,7 +198,27 @@ impl CubicCoeff {
         Self { a, b, c, d }
     }
 
-    pub(crate) fn eval(&self, t: f32) -> Point {
+    pub(crate) fn flatten(
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        p4: &Point,
+        transform: &Matrix4<f32>,
+    ) -> Vec<f32> {
+        let p1 = p1.transform(transform);
+        let p2 = p2.transform(transform);
+        let p3 = p3.transform(transform);
+        let p4 = p4.transform(transform);
+        let coeff = CubicCoeff::from(&p1, &p2, &p3, &p4);
+
+        let stops: Vec<f32> = vec![0.0, 1.0];
+
+        return flatten_recursive(&coeff, 0.0, 1.0, 1, stops);
+    }
+}
+
+impl Coeff for CubicCoeff {
+    fn eval(&self, t: f32) -> Point {
         let tt = t as f64;
         let p = ((self.a * tt + self.b) * tt + self.c) * tt + self.d;
 
@@ -151,7 +267,30 @@ impl ConicCoeff {
         }
     }
 
-    pub(crate) fn eval(&self, t: f32) -> Point {
+    pub(crate) fn flatten(
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        weight: f32,
+        transform: &Matrix4<f32>,
+    ) -> Vec<f32> {
+        let mut stops: Vec<f32> = Vec::new();
+
+        let p1 = p1.transform(transform);
+        let p2 = p2.transform(transform);
+        let p3 = p3.transform(transform);
+
+        let conic = ConicCoeff::from(&p1, &p2, &p3, weight);
+
+        stops.push(0.0);
+        stops.push(1.0);
+
+        return flatten_recursive(&conic, 0.0, 1.0, 1, stops);
+    }
+}
+
+impl Coeff for ConicCoeff {
+    fn eval(&self, t: f32) -> Point {
         let n = self.numer.eval(t);
         let d = self.denom.eval(t);
 

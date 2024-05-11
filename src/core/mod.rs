@@ -8,6 +8,7 @@ pub(crate) mod surface;
 
 use bytemuck::{Pod, Zeroable};
 pub use color::Color;
+use nalgebra::{Matrix4, Vector4};
 pub use paint::{Paint, Stroke, StrokeCap, StrokeJoin, Style};
 pub use path::{Path, PathDirection, PathFillType};
 pub use picture::{ClipOp, Picture, PictureRecorder};
@@ -30,6 +31,12 @@ impl Point {
 
     pub fn from(x: f32, y: f32) -> Self {
         Self { x, y }
+    }
+
+    pub(crate) fn transform(&self, matrix: &Matrix4<f32>) -> Point {
+        let vector = matrix * Vector4::new(self.x, self.y, 0.0, 1.0);
+
+        return Point::from(vector.x, vector.y);
     }
 }
 
