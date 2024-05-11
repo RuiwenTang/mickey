@@ -1,10 +1,4 @@
-use rskity::{
-    core::{
-        ClipOp, Color, Paint, Path, PathFillType, Picture, PictureRecorder, Point, RRect, Rect,
-        Stroke, StrokeJoin, Style, Surface as GPUSurface,
-    },
-    gpu::GPUContext,
-};
+use rskity::{core::*, gpu::GPUContext};
 
 mod common;
 
@@ -197,7 +191,7 @@ impl common::Renderer for ShapeRender {
 
         let text = text.unwrap();
 
-        let mut surface = GPUSurface::new(&text.texture, 800.0, 800.0, true, device);
+        let mut surface = Surface::new(&text.texture, 800.0, 800.0, true, device);
 
         surface.replay(self.picture.as_ref().unwrap());
 
