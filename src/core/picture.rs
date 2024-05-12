@@ -6,7 +6,7 @@ use crate::render::{
     PathCliper, PathRenderer, Raster, Renderer,
 };
 
-use super::{state::State, Paint, Path, RRect, Rect, Style};
+use super::{state::State, ColorType, Paint, Path, RRect, Rect, Style};
 
 /// Defines the type of operation performed by a clip operation.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
@@ -52,16 +52,21 @@ impl Draw {
                     )),
                 };
 
-                Box::new(PathRenderer::new(
-                    target_format,
-                    anti_alias,
-                    raster,
-                    Box::new(SolidColorFragment::new(
-                        paint.color,
+                let fragment = match paint.color {
+                    ColorType::SolidColor(color) => Box::new(SolidColorFragment::new(
+                        color,
                         vw,
                         vh,
                         self.transform.clone(),
                     )),
+                    ColorType::LinearGradient(_) => todo!(),
+                };
+
+                Box::new(PathRenderer::new(
+                    target_format,
+                    anti_alias,
+                    raster,
+                    fragment,
                     (self.depth + depth_offset) as f32,
                 ))
             }
@@ -110,11 +115,11 @@ impl PictureRecorder {
     ///
     /// * `path` the path to draw
     /// * `paint` the paint controls the styling when drawing the path
-    pub fn draw_path(&mut self, path: Path, paint: Paint) {
+    pub fn draw_path(&mut self, path: Path, paint: &Paint) {
         self.current_depth += 1;
         self.draws.push(Draw {
             depth: self.current_depth,
-            command: DrawCommand::DrawPath(path, paint),
+            command: DrawCommand::DrawPath(path, paint.clone()),
             transform: self.state.current_transform(),
         });
     }
@@ -125,7 +130,7 @@ impl PictureRecorder {
     ///
     /// * `rect` the rect to draw
     /// * `paint` the paint controls the styling when drawing the rect
-    pub fn draw_rect(&mut self, rect: &Rect, paint: Paint) {
+    pub fn draw_rect(&mut self, rect: &Rect, paint: &Paint) {
         self.draw_path(Path::new().add_rect(rect), paint);
     }
 
@@ -135,7 +140,7 @@ impl PictureRecorder {
     ///
     /// * `rect` the RoundRect to draw
     /// * `paint` the paint controls the styling when drawing the oval
-    pub fn draw_rrect(&mut self, rect: &RRect, paint: Paint) {
+    pub fn draw_rrect(&mut self, rect: &RRect, paint: &Paint) {
         self.draw_path(Path::new().add_rrect(rect), paint);
     }
 
@@ -145,7 +150,7 @@ impl PictureRecorder {
     ///
     /// * `rect` the bounds of ellipse to draw
     /// * `paint` the paint controls the styling when drawing the oval
-    pub fn draw_oval(&mut self, rect: &Rect, paint: Paint) {
+    pub fn draw_oval(&mut self, rect: &Rect, paint: &Paint) {
         self.draw_path(Path::new().add_oval(rect), paint);
     }
 
@@ -156,7 +161,7 @@ impl PictureRecorder {
     /// * `cx` the x coordinate of the center of the circle
     /// * `cy` the y coordinate of the center of the circle
     /// * `radius` the radius of the circle
-    pub fn draw_circle(&mut self, cx: f32, cy: f32, radius: f32, paint: Paint) {
+    pub fn draw_circle(&mut self, cx: f32, cy: f32, radius: f32, paint: &Paint) {
         if radius <= 0.0 {
             return;
         }

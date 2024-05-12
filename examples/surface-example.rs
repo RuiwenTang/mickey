@@ -44,17 +44,17 @@ impl common::Renderer for SurfaceExample {
         recorder.save();
 
         let mut paint = Paint::new();
-        paint.color = Color::red().with_alpha(0.25);
+        paint.color = Color::red().with_alpha(0.25).into();
 
-        recorder.draw_path(path.clone(), paint.clone());
+        recorder.draw_path(path.clone(), &paint);
 
         recorder.translate(200.0, 0.0);
 
         path.fill_type = PathFillType::EvenOdd;
 
-        paint.color = Color::magenta();
+        paint.color = Color::magenta().into();
 
-        recorder.draw_path(path, paint.clone());
+        recorder.draw_path(path, &paint);
 
         let curve = Path::new()
             .move_to(10.0, 10.0)
@@ -64,7 +64,7 @@ impl common::Renderer for SurfaceExample {
 
         recorder.translate(200.0, 0.0);
 
-        recorder.draw_path(curve, paint.clone());
+        recorder.draw_path(curve, &paint);
 
         let cubic = Path::new()
             .cubic_to(256.0, 64.0, 10.0, 192.0, 250.0, 450.0)
@@ -75,10 +75,10 @@ impl common::Renderer for SurfaceExample {
 
         recorder.translate(20.0, 300.0);
 
-        recorder.draw_path(cubic, paint);
+        recorder.draw_path(cubic, &paint);
 
         let mut paint = Paint::new();
-        paint.color = Color::red().with_alpha(0.3);
+        paint.color = Color::red().with_alpha(0.3).into();
         paint.style = Stroke::default()
             .with_width(20.0)
             .with_cap(StrokeCap::Square)
@@ -95,13 +95,13 @@ impl common::Renderer for SurfaceExample {
 
         recorder.translate(300.0, 0.0);
 
-        recorder.draw_path(line, paint);
+        recorder.draw_path(line, &paint);
 
         paint.style = Stroke::default()
             .with_width(5.0)
             .with_cap(StrokeCap::Square)
             .into();
-        recorder.draw_rect(&Rect::from_xywh(50.0, 200.0, 100.0, 100.0), paint);
+        recorder.draw_rect(&Rect::from_xywh(50.0, 200.0, 100.0, 100.0), &paint);
 
         self.picture = Some(recorder.finish_record());
     }

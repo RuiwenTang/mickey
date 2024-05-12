@@ -1,4 +1,4 @@
-use super::Color;
+use super::{Color, LinearGradient};
 
 /// Cap draws at the beginning and end of an open path contour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -94,12 +94,18 @@ impl Into<Style> for Stroke {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ColorType {
+    SolidColor(Color),
+    LinearGradient(LinearGradient),
+}
+
 /// Paint controls options applied when drawing.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Paint {
     /// unpremultiplied color used when stroking or filling.
     /// default value is black
-    pub color: Color,
+    pub color: ColorType,
     /// style when rendering geometry
     /// default value is Style::Fill
     pub style: Style,
@@ -108,7 +114,7 @@ pub struct Paint {
 impl Paint {
     pub fn new() -> Self {
         Self {
-            color: Color::black(),
+            color: Color::black().into(),
             style: Style::Fill,
         }
     }

@@ -1,5 +1,6 @@
 pub(crate) mod color;
 pub(crate) mod geometry;
+pub(crate) mod gradient;
 pub(crate) mod paint;
 pub(crate) mod path;
 pub(crate) mod picture;
@@ -8,8 +9,9 @@ pub(crate) mod surface;
 
 use bytemuck::{Pod, Zeroable};
 pub use color::Color;
+pub use gradient::LinearGradient;
 use nalgebra::{Matrix4, Vector4};
-pub use paint::{Paint, Stroke, StrokeCap, StrokeJoin, Style};
+pub use paint::{ColorType, Paint, Stroke, StrokeCap, StrokeJoin, Style};
 pub use path::{Path, PathDirection, PathFillType};
 pub use picture::{ClipOp, Picture, PictureRecorder};
 pub use surface::Surface;

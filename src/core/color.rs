@@ -1,6 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use nalgebra::clamp;
 
+use super::paint::ColorType;
+
 /// Unpremultiplied color with RGBA channel
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Pod, Zeroable)]
@@ -195,5 +197,11 @@ impl Color {
         self.a *= a;
 
         self
+    }
+}
+
+impl Into<ColorType> for Color {
+    fn into(self) -> ColorType {
+        ColorType::SolidColor(self)
     }
 }

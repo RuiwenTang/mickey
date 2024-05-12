@@ -6,36 +6,36 @@ mod common;
 fn draw_shapes(recorder: &mut PictureRecorder) {
     let mut paint = Paint::new();
 
-    paint.color = Color::from_rgba_u8(0x42, 0x85, 0xF4, 0xFF);
+    paint.color = Color::from_rgba_u8(0x42, 0x85, 0xF4, 0xFF).into();
     let rect = Rect::from_xywh(10.0, 10.0, 100.0, 160.0);
-    recorder.draw_rect(&rect, paint);
+    recorder.draw_rect(&rect, &paint);
 
     let mut oval = RRect::new_oval(rect);
     oval.offset(40.0, 80.0);
-    paint.color = Color::from_rgba_u8(0xDB, 0x44, 0x37, 0xFF);
-    recorder.draw_rrect(&oval, paint);
+    paint.color = Color::from_rgba_u8(0xDB, 0x44, 0x37, 0xFF).into();
+    recorder.draw_rrect(&oval, &paint);
 
-    paint.color = Color::from_rgba_u8(0x0F, 0x9D, 0x58, 0xFF);
-    recorder.draw_circle(180.0, 50.0, 25.0, paint);
+    paint.color = Color::from_rgba_u8(0x0F, 0x9D, 0x58, 0xFF).into();
+    recorder.draw_circle(180.0, 50.0, 25.0, &paint);
 
     paint.style = Stroke::default().with_width(4.0).into();
-    paint.color = Color::from_rgba_u8(0xF4, 0xB4, 0x0, 0xFF);
+    paint.color = Color::from_rgba_u8(0xF4, 0xB4, 0x0, 0xFF).into();
 
     let mut rrect = RRect::from_rect_xy(rect, 10.0, 10.0);
     rrect.offset(80.0, 50.0);
-    recorder.draw_rrect(&rrect, paint);
+    recorder.draw_rrect(&rrect, &paint);
 }
 
 /// same as https://fiddle.skia.org/c/@Canvas_drawCircle
 fn draw_circle(recorder: &mut PictureRecorder) {
     let mut paint = Paint::new();
     paint.style = Style::Fill;
-    paint.color = Color::black();
-    recorder.draw_circle(128.0, 128.0, 90.0, paint);
-    paint.color = Color::white();
-    recorder.draw_circle(86.0, 86.0, 20.0, paint);
-    recorder.draw_circle(160.0, 76.0, 20.0, paint);
-    recorder.draw_circle(140.0, 150.0, 35.0, paint);
+    paint.color = Color::black().into();
+    recorder.draw_circle(128.0, 128.0, 90.0, &paint);
+    paint.color = Color::white().into();
+    recorder.draw_circle(86.0, 86.0, 20.0, &paint);
+    recorder.draw_circle(160.0, 76.0, 20.0, &paint);
+    recorder.draw_circle(140.0, 150.0, 35.0, &paint);
 }
 
 /// same as https://fiddle.skia.org/c/@Canvas_drawRoundRect
@@ -63,7 +63,7 @@ fn draw_round_rect(recorder: &mut PictureRecorder) {
         for rad in &radii {
             recorder.draw_rrect(
                 &RRect::from_rect_xy(Rect::from_ltrb(10.0, 10.0, 60.0, 40.0), rad.x, rad.y),
-                *p,
+                p,
             );
             recorder.translate(0.0, 60.0);
         }
@@ -86,7 +86,7 @@ fn draw_clip_path(recorder: &mut PictureRecorder) {
 
     recorder.clip_path(path.clone(), ClipOp::Intersect);
 
-    recorder.draw_circle(70.0, 85.0, 60.0, paint);
+    recorder.draw_circle(70.0, 85.0, 60.0, &paint);
 
     recorder.restore();
 
@@ -97,7 +97,7 @@ fn draw_clip_path(recorder: &mut PictureRecorder) {
     path.fill_type = PathFillType::EvenOdd;
 
     recorder.clip_path(path, ClipOp::Intersect);
-    recorder.draw_circle(70.0, 85.0, 60.0, paint);
+    recorder.draw_circle(70.0, 85.0, 60.0, &paint);
 
     recorder.restore();
 }
@@ -111,7 +111,7 @@ fn draw_clip_rect(recorder: &mut PictureRecorder) {
     recorder.save();
 
     recorder.clip_rect(&rect, ClipOp::Intersect);
-    recorder.draw_circle(100.0, 100.0, 60.0, paint);
+    recorder.draw_circle(100.0, 100.0, 60.0, &paint);
 
     recorder.restore();
 
@@ -120,7 +120,7 @@ fn draw_clip_rect(recorder: &mut PictureRecorder) {
     recorder.translate(80.0, 0.0);
 
     recorder.clip_rect(&rect, ClipOp::Difference);
-    recorder.draw_circle(100.0, 100.0, 60.0, paint);
+    recorder.draw_circle(100.0, 100.0, 60.0, &paint);
 
     recorder.restore();
 }
