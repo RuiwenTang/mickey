@@ -23,15 +23,28 @@ fn draw_basic_gradient(recorder: &mut PictureRecorder) {
     paint.style = Style::Fill;
     paint.color = LinearGradient::new(
         Point::from(rect.left, rect.top),
-        Point::from(rect.right, rect.bottom),
+        Point::from(rect.right * 0.5, rect.bottom * 0.5),
     )
     .with_colors_stops(
         vec![Color::red(), Color::green(), Color::blue()],
         vec![0.0, 0.3, 1.0],
     )
+    .with_tile_mode(TileMode::Mirror)
     .into();
 
     recorder.draw_rect(&rect, &paint);
+
+    let mut center = rect.center();
+    center.x += 300.0;
+    center.y += 20.0;
+
+    paint.color = RadialGradient::new(center, 150.0)
+        .with_colors_stops(vec![Color::white(), Color::black()], vec![0.0, 1.0])
+        .into();
+
+    recorder.draw_circle(center.x, center.y, 100.0, &paint);
+
+    recorder.restore();
 }
 
 impl common::Renderer for GradientRender {

@@ -1,4 +1,4 @@
-use super::{Color, LinearGradient};
+use super::{Color, LinearGradient, RadialGradient};
 
 /// Cap draws at the beginning and end of an open path contour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -98,6 +98,7 @@ impl Into<Style> for Stroke {
 pub enum ColorType {
     SolidColor(Color),
     LinearGradient(LinearGradient),
+    RadialGradient(RadialGradient),
 }
 
 /// Paint controls options applied when drawing.

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::render::fragment::ColorPipelineGenerator;
+use crate::render::fragment::{
+    ColorPipelineGenerator, LINEAR_GRADIENT_PIPELINE_NAME, NON_COLOR_PIPELINE_NAME,
+    RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME,
+};
 
 use super::pipeline::Pipeline;
 
@@ -67,17 +70,22 @@ impl GPUContext {
         let mut generator: HashMap<&'static str, Box<dyn PipelineGenerater>> = HashMap::new();
 
         generator.insert(
-            "SolidColor",
+            SOLID_PIPELINE_NAME,
             ColorPipelineGenerator::solid_color_pipeline(device),
         );
 
         generator.insert(
-            "LinearGradient",
+            LINEAR_GRADIENT_PIPELINE_NAME,
             ColorPipelineGenerator::linear_gradient_pipeline(device),
         );
 
         generator.insert(
-            "NonColor",
+            RADIAL_GRADIENT_PIPELINE_NAME,
+            ColorPipelineGenerator::radial_gradient_pipeline(device),
+        );
+
+        generator.insert(
+            NON_COLOR_PIPELINE_NAME,
             ColorPipelineGenerator::non_color_pipeline(device),
         );
 
@@ -159,6 +167,13 @@ mod tests {
 
         ctx.load_pipeline(
             LINEAR_GRADIENT_PIPELINE_NAME,
+            wgpu::TextureFormat::Rgba8Unorm,
+            false,
+            &device,
+        );
+
+        ctx.load_pipeline(
+            RADIAL_GRADIENT_PIPELINE_NAME,
             wgpu::TextureFormat::Rgba8Unorm,
             false,
             &device,

@@ -1,7 +1,9 @@
 use nalgebra::Matrix4;
 
 use crate::render::{
-    fragment::{gradient::LinearGradientFragment, ClipMaskFragment, SolidColorFragment},
+    fragment::{
+        ClipMaskFragment, LinearGradientFragment, RadialGradientFragment, SolidColorFragment,
+    },
     raster::{PathFill, PathStroke},
     Fragment, PathCliper, PathRenderer, Raster, Renderer,
 };
@@ -78,6 +80,32 @@ impl Draw {
                             ))
                         } else {
                             Box::new(LinearGradientFragment::new(
+                                &gradient,
+                                vw,
+                                vh,
+                                self.transform.clone(),
+                            ))
+                        }
+                    }
+                    ColorType::RadialGradient(gradient) => {
+                        if gradient.colors.len() < 2 {
+                            Box::new(SolidColorFragment::new(
+                                Color::black(),
+                                vw,
+                                vh,
+                                self.transform.clone(),
+                            ))
+                        } else if !gradient.stops.is_empty()
+                            && gradient.stops.len() != gradient.colors.len()
+                        {
+                            Box::new(SolidColorFragment::new(
+                                Color::black(),
+                                vw,
+                                vh,
+                                self.transform.clone(),
+                            ))
+                        } else {
+                            Box::new(RadialGradientFragment::new(
                                 &gradient,
                                 vw,
                                 vh,

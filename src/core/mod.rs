@@ -9,7 +9,7 @@ pub(crate) mod surface;
 
 use bytemuck::{Pod, Zeroable};
 pub use color::Color;
-pub use gradient::LinearGradient;
+pub use gradient::{LinearGradient, RadialGradient};
 use nalgebra::{Matrix4, Vector4};
 pub use paint::{ColorType, Paint, Stroke, StrokeCap, StrokeJoin, Style};
 pub use path::{Path, PathDirection, PathFillType};
