@@ -1,12 +1,12 @@
 use nalgebra::Matrix4;
 
 use crate::render::{
-    fragment::{ClipMaskFragment, SolidColorFragment},
+    fragment::{gradient::LinearGradientFragment, ClipMaskFragment, SolidColorFragment},
     raster::{PathFill, PathStroke},
-    PathCliper, PathRenderer, Raster, Renderer,
+    Fragment, PathCliper, PathRenderer, Raster, Renderer,
 };
 
-use super::{state::State, ColorType, Paint, Path, RRect, Rect, Style};
+use super::{state::State, Color, ColorType, Paint, Path, RRect, Rect, Style};
 
 /// Defines the type of operation performed by a clip operation.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
@@ -52,14 +52,39 @@ impl Draw {
                     )),
                 };
 
-                let fragment = match paint.color {
+                let fragment: Box<dyn Fragment> = match &paint.color {
                     ColorType::SolidColor(color) => Box::new(SolidColorFragment::new(
-                        color,
+                        *color,
                         vw,
                         vh,
                         self.transform.clone(),
                     )),
-                    ColorType::LinearGradient(_) => todo!(),
+                    ColorType::LinearGradient(gradient) => {
+                        if gradient.colors.len() < 2 {
+                            Box::new(SolidColorFragment::new(
+                                Color::black(),
+                                vw,
+                                vh,
+                                self.transform.clone(),
+                            ))
+                        } else if !gradient.stops.is_empty()
+                            && gradient.stops.len() != gradient.colors.len()
+                        {
+                            Box::new(SolidColorFragment::new(
+                                Color::black(),
+                                vw,
+                                vh,
+                                self.transform.clone(),
+                            ))
+                        } else {
+                            Box::new(LinearGradientFragment::new(
+                                &gradient,
+                                vw,
+                                vh,
+                                self.transform.clone(),
+                            ))
+                        }
+                    }
                 };
 
                 Box::new(PathRenderer::new(

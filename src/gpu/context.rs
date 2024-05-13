@@ -72,6 +72,11 @@ impl GPUContext {
         );
 
         generator.insert(
+            "LinearGradient",
+            ColorPipelineGenerator::linear_gradient_pipeline(device),
+        );
+
+        generator.insert(
             "NonColor",
             ColorPipelineGenerator::non_color_pipeline(device),
         );
@@ -134,7 +139,9 @@ mod tests {
     use super::*;
     use crate::{
         gpu::init_test_context,
-        render::fragment::{NON_COLOR_PIPELINE_NAME, SOLID_PIPELINE_NAME},
+        render::fragment::{
+            LINEAR_GRADIENT_PIPELINE_NAME, NON_COLOR_PIPELINE_NAME, SOLID_PIPELINE_NAME,
+        },
     };
 
     #[test]
@@ -149,6 +156,14 @@ mod tests {
             false,
             &device,
         );
+
+        ctx.load_pipeline(
+            LINEAR_GRADIENT_PIPELINE_NAME,
+            wgpu::TextureFormat::Rgba8Unorm,
+            false,
+            &device,
+        );
+
         ctx.load_pipeline(
             NON_COLOR_PIPELINE_NAME,
             wgpu::TextureFormat::Rgba8Unorm,

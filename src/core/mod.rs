@@ -16,6 +16,22 @@ pub use path::{Path, PathDirection, PathFillType};
 pub use picture::{ClipOp, Picture, PictureRecorder};
 pub use surface::Surface;
 
+/// Defines how to repeat, fold or imit colors outside of the typically defined range of the source of the
+/// colors (such as the bounds of an image or the defining geometry of a gradient).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TileMode {
+    /// Replicate the edge color if the vertex draws outside of its orignal bounds.
+    #[default]
+    Clamp,
+    /// Repeat the color horizontally and vertically (or both along and perpendicular to a gradient's geometry).
+    Repeat,
+    /// Repeat the color horizontally and vertically, seamlessly alternating mirrored images.
+    Mirror,
+    /// Render the colors only within its original bounds.
+    /// If the vertex draws outside of its original bounds, transparent black is drawn instead.
+    Decal,
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Pod, Zeroable)]
 pub struct Point {

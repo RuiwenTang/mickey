@@ -9,9 +9,9 @@
 //!
 //! let mut recorder = PictureRecorder::new();
 //! let mut paint = Paint::new();
-//! paint.color = Color::from_rgba_u8(0x42, 0x85, 0xF4, 0xFF);
+//! paint.color = Color::from_rgba_u8(0x42, 0x85, 0xF4, 0xFF).into();
 //! let rect = Rect::from_xywh(10.0, 10.0, 100.0, 160.0);
-//! recorder.draw_rect(&rect, paint);
+//! recorder.draw_rect(&rect, &paint);
 //!
 //! let picture = recorder.finish_record();
 //!

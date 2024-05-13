@@ -68,7 +68,7 @@ impl Fragment for SolidColorFragment {
         vec![
             // goup 0
             device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("solid_color_transform"),
+                label: Some("Common Transform group"),
                 layout: &group0_layout,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
