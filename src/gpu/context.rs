@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::render::fragment::{
     ColorPipelineGenerator, LINEAR_GRADIENT_PIPELINE_NAME, NON_COLOR_PIPELINE_NAME,
-    RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME,
+    RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME, TEXTURE_PIPELINE_NAME,
 };
 
 use super::pipeline::Pipeline;
@@ -82,6 +82,11 @@ impl GPUContext {
         generator.insert(
             RADIAL_GRADIENT_PIPELINE_NAME,
             ColorPipelineGenerator::radial_gradient_pipeline(device),
+        );
+
+        generator.insert(
+            TEXTURE_PIPELINE_NAME,
+            ColorPipelineGenerator::image_pipeline(device),
         );
 
         generator.insert(

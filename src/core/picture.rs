@@ -1,14 +1,15 @@
-use nalgebra::Matrix4;
+use nalgebra::{Matrix4, Vector3};
 
 use crate::render::{
     fragment::{
         ClipMaskFragment, LinearGradientFragment, RadialGradientFragment, SolidColorFragment,
+        TextureFragment,
     },
     raster::{PathFill, PathStroke},
     Fragment, PathCliper, PathRenderer, Raster, Renderer,
 };
 
-use super::{state::State, Color, ColorType, Paint, Path, RRect, Rect, Style};
+use super::{image, state::State, Color, ColorType, Image, Paint, Path, RRect, Rect, Style};
 
 /// Defines the type of operation performed by a clip operation.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
@@ -23,6 +24,7 @@ pub enum ClipOp {
 pub(crate) enum DrawCommand {
     DrawPath(Path, Paint),
     ClipPath(Path, ClipOp),
+    DrawImage(Image, Rect, Matrix4<f32>),
 }
 
 pub(crate) struct Draw {
@@ -136,6 +138,41 @@ impl Draw {
                     (self.depth + depth_offset) as f32,
                 ))
             }
+            DrawCommand::DrawImage(image, rect, matrix) => {
+                let raster = Box::new(PathFill::new(
+                    Path::new().add_rect(rect),
+                    self.transform.clone(),
+                ));
+                let fragment = match &image.source {
+                    image::ImageSource::Bitmap(bitmap) => {
+                        Box::new(TextureFragment::new_with_bitmap(
+                            vw,
+                            vh,
+                            self.transform.clone(),
+                            bitmap.clone(),
+                            matrix.clone(),
+                        ))
+                    }
+                    image::ImageSource::Texture(texture, info) => {
+                        Box::new(TextureFragment::new_with_texture(
+                            vw,
+                            vh,
+                            self.transform.clone(),
+                            texture.clone(),
+                            info.clone(),
+                            matrix.clone(),
+                        ))
+                    }
+                };
+
+                Box::new(PathRenderer::new(
+                    target_format,
+                    anti_alias,
+                    raster,
+                    fragment,
+                    (self.depth + depth_offset) as f32,
+                ))
+            }
         }
     }
 }
@@ -221,6 +258,62 @@ impl PictureRecorder {
 
         let oval = Rect::from_xywh(cx - radius, cy - radius, radius * 2.0, radius * 2.0);
         self.draw_oval(&oval, paint);
+    }
+
+    /// Draws image with current clip and transform.
+    ///
+    /// # Arguments
+    ///
+    /// * `image` the image to draw
+    /// * `dst` the bounds of image to draw on canvas
+    /// * `src` part of image source to draw, pass `None` to draw the whole image
+    pub fn draw_image(&mut self, image: &Image, dst: &Rect, src: Option<&Rect>) {
+        let src = src
+            .unwrap_or(&Rect::from_xywh(
+                0.0,
+                0.0,
+                image.width() as f32,
+                image.height() as f32,
+            ))
+            .clone();
+
+        let pre = Matrix4::new_translation(&Vector3::new(dst.left, dst.top, 0.0));
+        let scale = Matrix4::new(
+            dst.width() / src.width(),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            dst.height() / src.height(),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        );
+
+        let post = Matrix4::new_translation(&Vector3::new(-src.left, -src.top, 0.0));
+
+        let matrix = pre * scale * post;
+
+        let matrix = if matrix.is_invertible() {
+            matrix.try_inverse().unwrap()
+        } else {
+            Matrix4::identity()
+        };
+
+        self.current_depth += 1;
+
+        self.draws.push(Draw {
+            depth: self.current_depth,
+            command: DrawCommand::DrawImage(image.clone(), dst.clone(), matrix),
+            transform: self.state.current_transform(),
+        });
     }
 
     /// Clips the current context with the specified path.

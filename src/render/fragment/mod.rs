@@ -11,15 +11,18 @@ use crate::gpu::{
 pub(crate) mod clip_mask;
 pub(crate) mod gradient;
 pub(crate) mod solid_color;
+pub(crate) mod texture;
 
 pub(crate) use clip_mask::ClipMaskFragment;
 pub(crate) use gradient::{GradientColorInfo, LinearGradientFragment, RadialGradientFragment};
 pub(crate) use solid_color::SolidColorFragment;
+pub(crate) use texture::TextureFragment;
 
 pub(crate) const SOLID_PIPELINE_NAME: &str = "SolidColor";
 pub(crate) const NON_COLOR_PIPELINE_NAME: &str = "NonColor";
 pub(crate) const LINEAR_GRADIENT_PIPELINE_NAME: &str = "LinearGradient";
 pub(crate) const RADIAL_GRADIENT_PIPELINE_NAME: &str = "RadialGradient";
+pub(crate) const TEXTURE_PIPELINE_NAME: &str = "TextureColor";
 
 pub(crate) fn state_for_convex_polygon() -> wgpu::DepthStencilState {
     wgpu::DepthStencilState {
@@ -449,6 +452,90 @@ impl ColorPipelineGenerator {
                             has_dynamic_offset: false,
                             min_binding_size: wgpu::BufferSize::new(4 * 4),
                         },
+                        count: None,
+                    },
+                ],
+            ],
+        })
+    }
+
+    pub(crate) fn image_pipeline(device: &wgpu::Device) -> Box<dyn PipelineGenerater> {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Image shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/image.wgsl").into()),
+        });
+
+        Box::new(ColorPipelineGenerator {
+            color_writable: true,
+            shader,
+            states: vec![
+                // for Convex Polygon no stencil test
+                state_for_convex_polygon(),
+                // for Stencil and Cover winding fill
+                state_for_complex_winding(),
+                // for Stencil and Cover even-odd fill
+                state_for_complex_even_odd(),
+                // for stroke no-overlap fill
+                state_for_no_overlap(),
+            ],
+            groups: vec![
+                // group 0
+                vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(
+                            (std::mem::size_of::<nalgebra::Matrix4<f32>>() * 2 + 16)
+                                as wgpu::BufferAddress,
+                        ),
+                    },
+                    count: None,
+                }],
+                // group 1
+                vec![
+                    // binding 0: ImageTransform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(
+                                (std::mem::size_of::<nalgebra::Matrix4<f32>>() + 16)
+                                    as wgpu::BufferAddress,
+                            ),
+                        },
+                        count: None,
+                    },
+                    // binding 1: ImageBounds
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(16 as wgpu::BufferAddress),
+                        },
+                        count: None,
+                    },
+                    // binding 2: TextureView
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // binding 3: Sampler
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
                 ],
