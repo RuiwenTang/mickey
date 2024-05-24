@@ -25,4 +25,4 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
 }
 
 @fragment
-fn fs_main(in: VertexOutput) -> void {}
+fn fs_main(in: VertexOutput) {}

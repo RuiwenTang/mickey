@@ -22,5 +22,6 @@
 
 pub mod core;
 pub mod gpu;
+pub mod text;
 
 pub(crate) mod render;

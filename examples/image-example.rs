@@ -15,7 +15,7 @@ struct ImageRender {
 
 impl ImageRender {
     fn new() -> Self {
-        let file = include_bytes!("screen_shoots/mandrill.png");
+        let file = include_bytes!("assets/mandrill.png");
         let ret = ImageReader::new(Cursor::new(file))
             .with_guessed_format()
             .expect("Invalid image")

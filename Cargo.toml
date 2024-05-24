@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ab_glyph = "0.2.26"
 bytemuck = {version = "1.15.0", features = ["derive"] }
 nalgebra = "0.32.5"
 smallvec = "1.13.2"
