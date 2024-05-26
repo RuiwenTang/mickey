@@ -140,7 +140,7 @@ impl<'a> Surface<'a> {
 
             render
                 .as_mut()
-                .prepare(total_depth, &mut stage_buffer, device, queue);
+                .prepare(total_depth, &mut stage_buffer, &context, device, queue);
         }
 
         let gpu_buffer = stage_buffer.gen_gpu_buffer(device, queue);

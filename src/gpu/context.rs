@@ -1,10 +1,11 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 use super::pipeline::Pipeline;
 use crate::render::fragment::{
     ColorPipelineGenerator, LINEAR_GRADIENT_PIPELINE_NAME, NON_COLOR_PIPELINE_NAME,
-    RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME, TEXTURE_PIPELINE_NAME,
+    RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME, SOLID_TEXT_PIPELINE_NAME,
+    TEXTURE_PIPELINE_NAME,
 };
 use crate::text::glyph_atlas::GlyphAtlasManager;
 
@@ -97,6 +98,11 @@ impl GPUContext {
             ColorPipelineGenerator::non_color_pipeline(device),
         );
 
+        generator.insert(
+            SOLID_TEXT_PIPELINE_NAME,
+            ColorPipelineGenerator::solid_text_pipeline(device),
+        );
+
         Self {
             pipelines: HashMap::new(),
             generator,
@@ -148,6 +154,10 @@ impl GPUContext {
         let node = node.unwrap();
 
         node.get_pipeline(label)
+    }
+
+    pub(crate) fn get_atlas_manager(&self) -> RefMut<GlyphAtlasManager> {
+        return self.r8_atlas.borrow_mut();
     }
 }
 

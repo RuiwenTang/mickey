@@ -5,7 +5,7 @@ use nalgebra::{Matrix4, Vector4};
 
 use crate::{
     core::{Color, LinearGradient, RadialGradient, TileMode},
-    gpu::{buffer::StageBuffer, pipeline::Pipeline},
+    gpu::{buffer::StageBuffer, pipeline::Pipeline, GPUContext},
     render::Fragment,
 };
 
@@ -111,6 +111,7 @@ impl Fragment for LinearGradientFragment {
         &mut self,
         depth: f32,
         buffer: &mut StageBuffer,
+        _context: &GPUContext,
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
     ) {
@@ -275,6 +276,7 @@ impl Fragment for RadialGradientFragment {
         &mut self,
         depth: f32,
         buffer: &mut StageBuffer,
+        _context: &GPUContext,
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
     ) {
