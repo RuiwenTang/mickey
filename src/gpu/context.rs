@@ -1,11 +1,12 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 
+use super::pipeline::Pipeline;
 use crate::render::fragment::{
     ColorPipelineGenerator, LINEAR_GRADIENT_PIPELINE_NAME, NON_COLOR_PIPELINE_NAME,
     RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME, TEXTURE_PIPELINE_NAME,
 };
-
-use super::pipeline::Pipeline;
+use crate::text::glyph_atlas::GlyphAtlasManager;
 
 pub(crate) trait PipelineGenerater {
     fn gen_pipeline(
@@ -63,6 +64,8 @@ pub struct GPUContext {
     pipelines: HashMap<PipelineKey, PipelineNode>,
 
     generator: HashMap<&'static str, Box<dyn PipelineGenerater>>,
+
+    r8_atlas: RefCell<GlyphAtlasManager>,
 }
 
 impl GPUContext {
@@ -97,6 +100,7 @@ impl GPUContext {
         Self {
             pipelines: HashMap::new(),
             generator,
+            r8_atlas: RefCell::new(GlyphAtlasManager::new(wgpu::TextureFormat::R8Unorm, device)),
         }
     }
 

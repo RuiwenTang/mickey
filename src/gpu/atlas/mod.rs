@@ -1,19 +1,24 @@
 mod allocator;
 
-use std::rc::Rc;
+use std::{collections::HashMap, hash::Hash, rc::Rc};
 
 use allocator::AtlasAllocator;
 
-pub(crate) struct AtlasTexture {
+pub(crate) struct AtlasTexture<KEY: Hash + PartialEq + Eq + Clone> {
     width: u32,
     height: u32,
 
     allocator: AtlasAllocator,
     format: wgpu::TextureFormat,
     texture: Rc<wgpu::Texture>,
+
+    regions: HashMap<KEY, (u32, u32, u32, u32)>,
 }
 
-impl AtlasTexture {
+impl<KEY> AtlasTexture<KEY>
+where
+    KEY: Hash + PartialEq + Eq + Clone,
+{
     pub(crate) fn new(
         width: u32,
         height: u32,
@@ -41,10 +46,33 @@ impl AtlasTexture {
             allocator: AtlasAllocator::new(width, height),
             format,
             texture: Rc::new(texture),
+            regions: HashMap::new(),
         }
     }
 
-    pub(crate) fn allocate(&mut self, width: u32, height: u32) -> Option<(u32, u32, u32, u32)> {
+    pub(crate) fn query_region(&self, key: &KEY) -> Option<(u32, u32, u32, u32)> {
+        self.regions.get(key).copied()
+    }
+
+    pub(crate) fn alloc_region(
+        &mut self,
+        key: &KEY,
+        width: u32,
+        height: u32,
+    ) -> Option<(u32, u32, u32, u32)> {
+        let region = self.allocate(width, height);
+
+        match &region {
+            None => {}
+            Some(rect) => {
+                self.regions.insert(key.clone(), rect.clone());
+            }
+        }
+
+        return region;
+    }
+
+    fn allocate(&mut self, width: u32, height: u32) -> Option<(u32, u32, u32, u32)> {
         let rect = self.allocator.allocate(width, height);
 
         if let Some(rect) = rect {
