@@ -7,7 +7,7 @@ use crate::{
         image::{Bitmap, ImageFormat},
         ImageInfo,
     },
-    gpu::{buffer::StageBuffer, pipeline::Pipeline},
+    gpu::{buffer::StageBuffer, pipeline::Pipeline, GPUContext},
     render::Fragment,
 };
 
@@ -209,6 +209,7 @@ impl Fragment for TextureFragment {
         &mut self,
         depth: f32,
         buffer: &mut StageBuffer,
+        _context: &GPUContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) {

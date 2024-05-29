@@ -1,3 +1,4 @@
+pub(crate) mod atlas;
 pub(crate) mod buffer;
 pub(crate) mod context;
 pub(crate) mod pipeline;

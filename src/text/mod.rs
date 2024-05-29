@@ -3,6 +3,7 @@ use std::rc::Rc;
 use ab_glyph::{Glyph, ScaleFont};
 
 pub(crate) mod font;
+pub(crate) mod glyph_atlas;
 
 pub use font::{Font, FontDescription, FontStyle};
 

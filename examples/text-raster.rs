@@ -45,7 +45,7 @@ impl common::Renderer for TextRasterView {
 
         let builder = TextBlobBuilder::new(Rc::new(font), 60.0);
 
-        let blob = builder.build("hello world");
+        let blob = builder.build("hello world j");
 
         println!(
             "blob size:[ {}, {} ]",
@@ -58,16 +58,28 @@ impl common::Renderer for TextRasterView {
 
         let mut recorder = PictureRecorder::new();
 
-        let image = gen_text_image(blob);
+        let image = gen_text_image(blob.clone());
 
         let width = image.info.width;
         let height = image.info.height;
 
-        recorder.draw_image(
-            &Image::from_bitmap(image),
-            &Rect::from_xywh(10.0, 10.0, width as f32 * 0.5, height as f32 * 0.5),
-            None,
-        );
+        let rect = Rect::from_xywh(10.0, 10.0, width as f32, height as f32);
+
+        recorder.draw_image(&Image::from_bitmap(image), &rect, None);
+
+        let mut paint = Paint::new();
+        paint.style = Style::Stroke(Stroke {
+            width: 2.0,
+            miter_limit: 4.0,
+            ..Default::default()
+        });
+        paint.color = Color::red().into();
+
+        recorder.draw_rect(&rect, &paint);
+
+        let pos = Point::from(rect.left, rect.bottom);
+
+        recorder.draw_text(blob.clone(), pos, Color::red());
 
         self.picture = Some(recorder.finish_record());
     }
@@ -98,6 +110,8 @@ impl common::Renderer for TextRasterView {
         );
 
         text.present();
+
+        self.context.as_ref().unwrap().print_memory_usage();
     }
 }
 

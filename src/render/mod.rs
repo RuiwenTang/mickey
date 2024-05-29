@@ -1,5 +1,6 @@
 pub(crate) mod command;
 pub(crate) mod fragment;
+pub(crate) mod glyph_render;
 pub(crate) mod raster;
 
 use std::ops::Range;
@@ -29,6 +30,7 @@ pub(crate) trait Renderer {
         &mut self,
         total_depth: f32,
         buffer: &mut StageBuffer,
+        context: &GPUContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     );
@@ -68,6 +70,7 @@ pub(crate) trait Fragment {
         &mut self,
         depth: f32,
         buffer: &mut StageBuffer,
+        context: &GPUContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     );
@@ -171,6 +174,7 @@ impl Renderer for PathRenderer {
         &mut self,
         total_depth: f32,
         buffer: &mut StageBuffer,
+        context: &GPUContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) {
@@ -182,7 +186,7 @@ impl Renderer for PathRenderer {
         ) = self.raster.rasterize(buffer);
 
         self.fragment
-            .prepare(self.depth / total_depth, buffer, device, queue);
+            .prepare(self.depth / total_depth, buffer, context, device, queue);
     }
 
     fn render<'a>(
@@ -304,6 +308,7 @@ impl Renderer for PathCliper {
         &mut self,
         total_depth: f32,
         buffer: &mut StageBuffer,
+        _context: &GPUContext,
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
     ) {

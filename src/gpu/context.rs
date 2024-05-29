@@ -1,11 +1,13 @@
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
+use super::pipeline::Pipeline;
 use crate::render::fragment::{
     ColorPipelineGenerator, LINEAR_GRADIENT_PIPELINE_NAME, NON_COLOR_PIPELINE_NAME,
-    RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME, TEXTURE_PIPELINE_NAME,
+    RADIAL_GRADIENT_PIPELINE_NAME, SOLID_PIPELINE_NAME, SOLID_TEXT_PIPELINE_NAME,
+    TEXTURE_PIPELINE_NAME,
 };
-
-use super::pipeline::Pipeline;
+use crate::text::glyph_atlas::GlyphAtlasManager;
 
 pub(crate) trait PipelineGenerater {
     fn gen_pipeline(
@@ -63,6 +65,10 @@ pub struct GPUContext {
     pipelines: HashMap<PipelineKey, PipelineNode>,
 
     generator: HashMap<&'static str, Box<dyn PipelineGenerater>>,
+
+    linear_sampler: wgpu::Sampler,
+
+    r8_atlas: RefCell<GlyphAtlasManager>,
 }
 
 impl GPUContext {
@@ -94,9 +100,31 @@ impl GPUContext {
             ColorPipelineGenerator::non_color_pipeline(device),
         );
 
+        generator.insert(
+            SOLID_TEXT_PIPELINE_NAME,
+            ColorPipelineGenerator::solid_text_pipeline(device),
+        );
+
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            lod_min_clamp: 0.0,
+            lod_max_clamp: 1000.0,
+            compare: None,
+            anisotropy_clamp: 1,
+            border_color: None,
+        });
+
         Self {
             pipelines: HashMap::new(),
             generator,
+            linear_sampler: sampler,
+            r8_atlas: RefCell::new(GlyphAtlasManager::new(wgpu::TextureFormat::R8Unorm, device)),
         }
     }
 
@@ -144,6 +172,21 @@ impl GPUContext {
         let node = node.unwrap();
 
         node.get_pipeline(label)
+    }
+
+    pub(crate) fn get_atlas_manager(&self) -> RefMut<GlyphAtlasManager> {
+        return self.r8_atlas.borrow_mut();
+    }
+
+    pub(crate) fn get_linear_sampler(&self) -> &wgpu::Sampler {
+        &self.linear_sampler
+    }
+
+    pub fn print_memory_usage(&self) {
+        let total = self.r8_atlas.borrow().get_total_memory();
+        let used = self.r8_atlas.borrow().get_used_memory();
+
+        println!("Memory Usage: {}/{}", used / (1024), total / (1024));
     }
 }
 
