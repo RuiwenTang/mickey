@@ -11,7 +11,6 @@ use crate::gpu::{
 pub(crate) mod clip_mask;
 pub(crate) mod gradient;
 pub(crate) mod solid_color;
-pub(crate) mod solid_text;
 pub(crate) mod texture;
 
 pub(crate) use clip_mask::ClipMaskFragment;
@@ -253,6 +252,12 @@ pub(crate) fn state_for_clip_even_odd_difference() -> wgpu::DepthStencilState {
 
 pub(crate) struct ColorPipelineGenerator {
     color_writable: bool,
+    shader: wgpu::ShaderModule,
+    states: Vec<wgpu::DepthStencilState>,
+    groups: Vec<Vec<wgpu::BindGroupLayoutEntry>>,
+}
+
+struct TextPipelineGenerator {
     shader: wgpu::ShaderModule,
     states: Vec<wgpu::DepthStencilState>,
     groups: Vec<Vec<wgpu::BindGroupLayoutEntry>>,
@@ -551,8 +556,7 @@ impl ColorPipelineGenerator {
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/solid_text.wgsl").into()),
         });
 
-        Box::new(ColorPipelineGenerator {
-            color_writable: true,
+        Box::new(TextPipelineGenerator {
             shader,
             states: vec![
                 // for Convex Polygon no stencil test
@@ -584,7 +588,7 @@ impl ColorPipelineGenerator {
                     // binding 0: Color
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
@@ -687,7 +691,46 @@ impl PipelineGenerater for ColorPipelineGenerator {
     }
 }
 
-struct TransformGroup {
+impl PipelineGenerater for TextPipelineGenerator {
+    fn gen_pipeline(
+        &self,
+        format: wgpu::TextureFormat,
+        sample_count: u32,
+        device: &wgpu::Device,
+    ) -> Pipeline {
+        let mut builder = PipelineBuilder::new();
+
+        for group in &self.groups {
+            builder = builder.add_group(group.clone());
+        }
+
+        return builder
+            .with_format(format)
+            .with_sample_count(sample_count)
+            .with_color_writable(true)
+            .add_buffer(wgpu::VertexBufferLayout {
+                array_stride: 16,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &[
+                    wgpu::VertexAttribute {
+                        offset: 0,
+                        shader_location: 0,
+                        format: wgpu::VertexFormat::Float32x2,
+                    },
+                    wgpu::VertexAttribute {
+                        offset: 8,
+                        shader_location: 1,
+                        format: wgpu::VertexFormat::Float32x2,
+                    },
+                ],
+            })
+            .with_states(self.states.clone())
+            .build(&self.shader, device);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TransformGroup {
     mvp: Matrix4<f32>,
     transform: Matrix4<f32>,
     info: Vector4<f32>,
@@ -696,7 +739,7 @@ struct TransformGroup {
 }
 
 impl TransformGroup {
-    fn new(mvp: Matrix4<f32>, transform: Matrix4<f32>, info: Vector4<f32>) -> Self {
+    pub(crate) fn new(mvp: Matrix4<f32>, transform: Matrix4<f32>, info: Vector4<f32>) -> Self {
         Self {
             mvp,
             transform,
@@ -705,7 +748,7 @@ impl TransformGroup {
         }
     }
 
-    fn prepare(&mut self, depth: f32, buffer: &mut StageBuffer) {
+    pub(crate) fn prepare(&mut self, depth: f32, buffer: &mut StageBuffer) {
         let mut transform = smallvec::SmallVec::<[f32; 36]>::new();
 
         self.info[0] = depth;
@@ -717,7 +760,7 @@ impl TransformGroup {
         self.buffer_range = buffer.push_data_align(bytemuck::cast_slice(transform.as_slice()));
     }
 
-    fn get_buffer_range(&self) -> Range<wgpu::BufferAddress> {
+    pub(crate) fn get_buffer_range(&self) -> Range<wgpu::BufferAddress> {
         self.buffer_range.clone()
     }
 }

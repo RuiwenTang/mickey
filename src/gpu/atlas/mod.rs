@@ -89,10 +89,6 @@ where
         (x, y)
     }
 
-    pub(crate) fn get_use_rate(&self) -> f32 {
-        self.allocator.get_use_rate()
-    }
-
     pub(crate) fn get_texture(&self) -> Rc<wgpu::Texture> {
         self.texture.clone()
     }
@@ -129,5 +125,9 @@ where
                 depth_or_array_layers: 1,
             },
         );
+    }
+
+    pub(crate) fn get_used_area(&self) -> f32 {
+        self.allocator.get_used_area()
     }
 }

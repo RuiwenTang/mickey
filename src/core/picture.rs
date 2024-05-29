@@ -1,15 +1,21 @@
+use std::rc::Rc;
+
 use nalgebra::{Matrix4, Vector3};
 
-use crate::render::{
-    fragment::{
-        ClipMaskFragment, LinearGradientFragment, RadialGradientFragment, SolidColorFragment,
-        TextureFragment,
+use crate::{
+    render::{
+        fragment::{
+            ClipMaskFragment, LinearGradientFragment, RadialGradientFragment, SolidColorFragment,
+            TextureFragment,
+        },
+        glyph_render::TextBlobRender,
+        raster::{PathFill, PathStroke},
+        Fragment, PathCliper, PathRenderer, Raster, Renderer,
     },
-    raster::{PathFill, PathStroke},
-    Fragment, PathCliper, PathRenderer, Raster, Renderer,
+    text::TextBlob,
 };
 
-use super::{image, state::State, Color, ColorType, Image, Paint, Path, RRect, Rect, Style};
+use super::{image, state::State, Color, ColorType, Image, Paint, Path, Point, RRect, Rect, Style};
 
 /// Defines the type of operation performed by a clip operation.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
@@ -25,6 +31,7 @@ pub(crate) enum DrawCommand {
     DrawPath(Path, Paint),
     ClipPath(Path, ClipOp),
     DrawImage(Image, Rect, Matrix4<f32>),
+    DrawText(Rc<TextBlob>, Point, Color),
 }
 
 pub(crate) struct Draw {
@@ -173,6 +180,18 @@ impl Draw {
                     (self.depth + depth_offset) as f32,
                 ))
             }
+
+            DrawCommand::DrawText(blob, pos, color) => Box::new(TextBlobRender::new(
+                target_format,
+                anti_alias,
+                blob.clone(),
+                color.clone(),
+                pos.clone(),
+                (self.depth + depth_offset) as f32,
+                vw,
+                vh,
+                self.transform.clone(),
+            )),
         }
     }
 }
@@ -312,6 +331,23 @@ impl PictureRecorder {
         self.draws.push(Draw {
             depth: self.current_depth,
             command: DrawCommand::DrawImage(image.clone(), dst.clone(), matrix),
+            transform: self.state.current_transform(),
+        });
+    }
+
+    /// Draws text with current clip and transform at position pos with color color.
+    /// Currently only support solid color and fill style
+    ///
+    /// # Arguments
+    ///
+    /// * `text` the text to draw
+    /// * `pos` the baseline position of text
+    /// * `color` the color of text
+    pub fn draw_text(&mut self, text: Rc<TextBlob>, pos: Point, color: Color) {
+        self.current_depth += 1;
+        self.draws.push(Draw {
+            depth: self.current_depth,
+            command: DrawCommand::DrawText(text, pos, color),
             transform: self.state.current_transform(),
         });
     }

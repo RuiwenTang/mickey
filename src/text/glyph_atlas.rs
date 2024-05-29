@@ -24,12 +24,12 @@ impl Hash for GlyphAtlasKey {
     }
 }
 
-const TEXTURE_SIZE: u32 = 1024;
+const TEXTURE_SIZE: u32 = 2048;
 const REGION_PADDING: u32 = 1;
 
 pub(crate) struct GlyphAtlasValue {
-    rect: Rect,
-    texture: Rc<wgpu::Texture>,
+    pub(crate) rect: Rect,
+    pub(crate) texture: Rc<wgpu::Texture>,
 }
 
 pub(crate) struct GlyphAtlasManager {
@@ -143,6 +143,16 @@ impl GlyphAtlasManager {
             rect: Rect::from_ltrb(lf, tf, rf, bf),
             texture: self.textures[self.index].get_texture(),
         });
+    }
+
+    pub(crate) fn get_total_memory(&self) -> usize {
+        self.textures.len() * TEXTURE_SIZE as usize * TEXTURE_SIZE as usize
+    }
+
+    pub(crate) fn get_used_memory(&self) -> usize {
+        let used_area: f32 = self.textures.iter().map(|t| t.get_used_area()).sum();
+
+        used_area as usize
     }
 }
 

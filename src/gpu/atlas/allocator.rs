@@ -165,7 +165,6 @@ impl SkylineBinPack {
 
 pub(crate) struct AtlasAllocator {
     bin_pack: SkylineBinPack,
-    total_area: f32,
     used_area: f32,
 }
 
@@ -173,7 +172,6 @@ impl AtlasAllocator {
     pub(crate) fn new(width: u32, height: u32) -> Self {
         Self {
             bin_pack: SkylineBinPack::new(width, height),
-            total_area: width as f32 * height as f32,
             used_area: 0.0,
         }
     }
@@ -189,7 +187,7 @@ impl AtlasAllocator {
         }
     }
 
-    pub(crate) fn get_use_rate(&self) -> f32 {
-        self.used_area / self.total_area
+    pub(crate) fn get_used_area(&self) -> f32 {
+        self.used_area
     }
 }

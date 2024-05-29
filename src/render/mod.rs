@@ -1,5 +1,6 @@
 pub(crate) mod command;
 pub(crate) mod fragment;
+pub(crate) mod glyph_render;
 pub(crate) mod raster;
 
 use std::ops::Range;
