@@ -130,6 +130,7 @@ impl Fragment for LinearGradientFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        context: &'a GPUContext,
     ) -> Vec<wgpu::BindGroup> {
         // group 1 color uniform
         let group1_layout = pipeline.get_group_layout(1);
@@ -142,7 +143,7 @@ impl Fragment for LinearGradientFragment {
 
         vec![
             // goup 0
-            self.gen_common_bind_groups(device, buffer, pipeline),
+            self.gen_common_bind_groups(device, buffer, pipeline, context),
             // group 1
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Linear Gradient Group"),
@@ -189,6 +190,7 @@ impl Fragment for LinearGradientFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        _context: &'a GPUContext,
     ) -> wgpu::BindGroup {
         let group0_layout = pipeline
             .get_group_layout(0)
@@ -295,6 +297,7 @@ impl Fragment for RadialGradientFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        context: &'a GPUContext,
     ) -> Vec<wgpu::BindGroup> {
         // group 1 color uniform
         let group1_layout = pipeline.get_group_layout(1);
@@ -307,7 +310,7 @@ impl Fragment for RadialGradientFragment {
 
         vec![
             // goup 0
-            self.gen_common_bind_groups(device, buffer, pipeline),
+            self.gen_common_bind_groups(device, buffer, pipeline, context),
             // group 1
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Radial Gradient Group"),
@@ -356,6 +359,7 @@ impl Fragment for RadialGradientFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        _context: &'a GPUContext,
     ) -> wgpu::BindGroup {
         let group0_layout = pipeline
             .get_group_layout(0)

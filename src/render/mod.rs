@@ -80,6 +80,7 @@ pub(crate) trait Fragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        context: &'a GPUContext,
     ) -> Vec<wgpu::BindGroup>;
 
     fn gen_common_bind_groups<'a>(
@@ -87,6 +88,7 @@ pub(crate) trait Fragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        context: &'a GPUContext,
     ) -> wgpu::BindGroup;
 }
 
@@ -135,7 +137,7 @@ impl PathRenderer {
 
         let common_group = self
             .fragment
-            .gen_common_bind_groups(device, buffer, pipeline);
+            .gen_common_bind_groups(device, buffer, pipeline, context);
 
         let state = state_for_stencil_mask();
 
@@ -214,7 +216,9 @@ impl Renderer for PathRenderer {
 
         let pipeline = pipeline.unwrap();
 
-        let bind_groups = self.fragment.gen_bind_groups(device, buffer, pipeline);
+        let bind_groups = self
+            .fragment
+            .gen_bind_groups(device, buffer, pipeline, context);
 
         let state = self.gen_stencil_state();
 

@@ -53,6 +53,7 @@ impl Fragment for SolidColorFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        _context: &'a GPUContext,
     ) -> Vec<wgpu::BindGroup> {
         // group 0 common transform
         let group0_layout = pipeline.get_group_layout(0);
@@ -104,6 +105,7 @@ impl Fragment for SolidColorFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        _context: &'a GPUContext,
     ) -> wgpu::BindGroup {
         let group0_layout = pipeline
             .get_group_layout(0)

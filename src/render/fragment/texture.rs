@@ -148,7 +148,6 @@ impl TextureProvider for DirectTextureProvider {
 pub(crate) struct TextureFragment {
     transform: TransformGroup,
     texture: Box<dyn TextureProvider>,
-    sampler: Option<wgpu::Sampler>,
     image_transform: Matrix4<f32>,
 
     image_transform_range: Range<wgpu::BufferAddress>,
@@ -170,7 +169,6 @@ impl TextureFragment {
                 Vector4::new(0.0, 0.0, 0.0, 0.0),
             ),
             texture: Box::new(BitmapTextureProvider::new(bitmap)),
-            sampler: None,
             image_transform,
             image_transform_range: 0..0,
             info_range: 0..0,
@@ -192,7 +190,6 @@ impl TextureFragment {
                 Vector4::new(0.0, 0.0, 0.0, 0.0),
             ),
             texture: Box::new(DirectTextureProvider::new(texture, info)),
-            sampler: None,
             image_transform,
             image_transform_range: 0..0,
             info_range: 0..0,
@@ -216,21 +213,6 @@ impl Fragment for TextureFragment {
         self.transform.prepare(depth, buffer);
 
         self.texture.prepare(device, queue);
-
-        self.sampler = Some(device.create_sampler(&wgpu::SamplerDescriptor {
-            label: None,
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
-            lod_min_clamp: 0.0,
-            lod_max_clamp: 1000.0,
-            compare: None,
-            anisotropy_clamp: 1,
-            border_color: None,
-        }));
 
         let mut image_transform_buffer = smallvec::SmallVec::<[f32; 20]>::new();
         let bounds = [
@@ -260,6 +242,7 @@ impl Fragment for TextureFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        context: &'a GPUContext,
     ) -> Vec<wgpu::BindGroup> {
         // group 1 color uniform
         let group1_layout = pipeline
@@ -300,14 +283,12 @@ impl Fragment for TextureFragment {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::Sampler(
-                        self.sampler.as_ref().expect("Texture not prepared"),
-                    ),
+                    resource: wgpu::BindingResource::Sampler(context.get_linear_sampler()),
                 },
             ],
         });
         vec![
-            self.gen_common_bind_groups(device, buffer, pipeline),
+            self.gen_common_bind_groups(device, buffer, pipeline, context),
             texture_group,
         ]
     }
@@ -317,6 +298,7 @@ impl Fragment for TextureFragment {
         device: &wgpu::Device,
         buffer: &'a wgpu::Buffer,
         pipeline: &'a Pipeline,
+        _context: &'a GPUContext,
     ) -> wgpu::BindGroup {
         let group0_layout = pipeline
             .get_group_layout(0)
