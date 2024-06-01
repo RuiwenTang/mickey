@@ -1,12 +1,6 @@
 mod common;
 
-use mickey::{
-    core::{
-        Color, Paint, Path, PathFillType, Picture, PictureRecorder, Point, Rect, Stroke, StrokeCap,
-        StrokeJoin, Surface as GPUSurface,
-    },
-    gpu::GPUContext,
-};
+use mickey::*;
 
 struct SurfaceExample {
     context: Option<GPUContext>,

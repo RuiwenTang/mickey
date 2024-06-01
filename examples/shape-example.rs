@@ -1,4 +1,4 @@
-use mickey::{core::*, gpu::GPUContext};
+use mickey::*;
 
 mod common;
 
@@ -191,7 +191,7 @@ impl common::Renderer for ShapeRender {
 
         let text = text.unwrap();
 
-        let mut surface = Surface::new(&text.texture, 800.0, 800.0, true, device);
+        let mut surface = GPUSurface::new(&text.texture, 800.0, 800.0, true, device);
 
         surface.replay(self.picture.as_ref().unwrap());
 

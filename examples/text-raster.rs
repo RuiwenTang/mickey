@@ -2,7 +2,7 @@ mod common;
 
 use std::rc::Rc;
 
-use mickey::{core::*, gpu::GPUContext, text::*};
+use mickey::*;
 
 struct TextRasterView {
     context: Option<GPUContext>,
@@ -93,7 +93,7 @@ impl common::Renderer for TextRasterView {
 
         let text = text.unwrap();
 
-        let mut surface = Surface::new(&text.texture, 800.0, 800.0, true, device);
+        let mut surface = GPUSurface::new(&text.texture, 800.0, 800.0, true, device);
 
         surface.replay(self.picture.as_ref().unwrap());
 

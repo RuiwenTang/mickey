@@ -6,7 +6,6 @@ pub(crate) mod paint;
 pub(crate) mod path;
 pub(crate) mod picture;
 pub(crate) mod state;
-pub(crate) mod surface;
 
 use bytemuck::{Pod, Zeroable};
 pub use color::Color;
@@ -16,7 +15,6 @@ use nalgebra::{Matrix4, Vector4};
 pub use paint::{ColorType, Paint, Stroke, StrokeCap, StrokeJoin, Style};
 pub use path::{Path, PathDirection, PathFillType};
 pub use picture::{ClipOp, Picture, PictureRecorder};
-pub use surface::Surface;
 
 /// Defines how to repeat, fold or imit colors outside of the typically defined range of the source of the
 /// colors (such as the bounds of an image or the defining geometry of a gradient).

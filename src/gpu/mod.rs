@@ -2,8 +2,10 @@ pub(crate) mod atlas;
 pub(crate) mod buffer;
 pub(crate) mod context;
 pub(crate) mod pipeline;
+pub(crate) mod surface;
 
 pub use context::GPUContext;
+pub use surface::GPUSurface;
 
 /// Only for test
 #[cfg(test)]

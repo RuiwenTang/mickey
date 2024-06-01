@@ -6,7 +6,7 @@ Mickey is an other wheel of 2D vector graphic rendering project which I used to 
 
 ```rust
 
-use mickey::{core::*，gpu::GPUContext}
+use mickey::*
 
 // record draws into Picture
 let picture = {
@@ -42,7 +42,7 @@ let texture : wgpu::Texture = ...; // create by yourself
 
 let context = GPUContext::new(&device);
 
-let mut surface = Surface::new(&text.texture, texture.width(), texture.height(), true, device);
+let mut surface = GPUSurface::new(&text.texture, texture.width(), texture.height(), true, device);
 
 surface.replay(&picture);
 surface.flush(&mut context, &device, &queue, Some(wgpu::Color {

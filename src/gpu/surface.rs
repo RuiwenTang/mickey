@@ -1,12 +1,11 @@
 use crate::{
+    core::Picture,
     gpu::{buffer::StageBuffer, GPUContext},
     render::{fragment::NON_COLOR_PIPELINE_NAME, CommandList, Renderer},
 };
 
-use super::picture::Picture;
-
 /// A surface is a wrap around a wgpu::Texture. which can be used to render contents.
-pub struct Surface<'a> {
+pub struct GPUSurface<'a> {
     target: &'a wgpu::Texture,
     anti_alias: bool,
     depth_stencil: wgpu::Texture,
@@ -17,7 +16,7 @@ pub struct Surface<'a> {
     renders: Vec<Box<dyn Renderer>>,
 }
 
-impl<'a> Surface<'a> {
+impl<'a> GPUSurface<'a> {
     /// Wrap a wgpu::Texture to a surface.
     ///
     /// # Arguments
@@ -71,7 +70,7 @@ impl<'a> Surface<'a> {
             None
         };
 
-        Surface {
+        GPUSurface {
             target,
             anti_alias,
             depth_stencil,

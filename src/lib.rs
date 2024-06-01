@@ -5,7 +5,7 @@
 //!
 //! ```rust
 //!
-//! use mickey::core::{Color, Paint, PictureRecorder, Rect};
+//! use mickey::*;
 //!
 //! let mut recorder = PictureRecorder::new();
 //! let mut paint = Paint::new();
@@ -17,7 +17,7 @@
 //!
 //! ```
 //!
-//! After that, you can use `mickey::gpu::Surface` to replay the draw call in this `Picture` to a wgpu::Texture.
+//! After that, you can use `mickey::GPUSurface` to replay the draw call in this `Picture` to a wgpu::Texture.
 //!
 
 pub mod core;
@@ -25,3 +25,7 @@ pub mod gpu;
 pub mod text;
 
 pub(crate) mod render;
+
+pub use core::*;
+pub use gpu::*;
+pub use text::*;
