@@ -1,6 +1,6 @@
 mod common;
 
-use rskity::{
+use mickey::{
     core::{
         Color, Paint, Path, PathFillType, Picture, PictureRecorder, Point, Rect, Stroke, StrokeCap,
         StrokeJoin, Surface as GPUSurface,

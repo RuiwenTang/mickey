@@ -1,7 +1,7 @@
 use std::{io::Cursor, rc::Rc};
 
 use image::io::Reader as ImageReader;
-use rskity::{core::*, gpu::GPUContext};
+use mickey::{core::*, gpu::GPUContext};
 
 mod common;
 

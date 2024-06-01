@@ -2,7 +2,7 @@ mod common;
 
 use std::rc::Rc;
 
-use rskity::{core::*, gpu::GPUContext, text::*};
+use mickey::{core::*, gpu::GPUContext, text::*};
 
 struct TextRasterView {
     context: Option<GPUContext>,

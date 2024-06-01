@@ -1,4 +1,4 @@
-use rskity::{core::*, gpu::GPUContext};
+use mickey::{core::*, gpu::GPUContext};
 
 mod common;
 

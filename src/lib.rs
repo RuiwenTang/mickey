@@ -1,11 +1,11 @@
-//! rskity is a 2D Vector Graphic rendering engine use wgpu as backend.
+//! mickey is a 2D Vector Graphic rendering engine use wgpu as backend.
 //!
-//! To use rskity, you need create a `PictureRecorder`, then use `PictureRecorder` to record draw call and generate a `Picture`.
+//! To use mickey, you need create a `PictureRecorder`, then use `PictureRecorder` to record draw call and generate a `Picture`.
 //! Example:
 //!
 //! ```rust
 //!
-//! use rskity::core::{Color, Paint, PictureRecorder, Rect};
+//! use mickey::core::{Color, Paint, PictureRecorder, Rect};
 //!
 //! let mut recorder = PictureRecorder::new();
 //! let mut paint = Paint::new();
@@ -17,7 +17,7 @@
 //!
 //! ```
 //!
-//! After that, you can use `rskity::gpu::Surface` to replay the draw call in this `Picture` to a wgpu::Texture.
+//! After that, you can use `mickey::gpu::Surface` to replay the draw call in this `Picture` to a wgpu::Texture.
 //!
 
 pub mod core;

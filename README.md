@@ -1,12 +1,12 @@
-# RSkity
+# Mickey
 
-Rskity is an other wheel of 2D vector graphic rendering project which I used to learn `rust` and `wgpu`. It is currently in the early stages of development, hoping one day I can publish it.
+Mickey is an other wheel of 2D vector graphic rendering project which I used to learn `rust` and `wgpu`. It is currently in the early stages of development, hoping one day I can publish it.
 
 ## Usage
 
 ```rust
 
-use rskity::{core::*，gpu::GPUContext}
+use mickey::{core::*，gpu::GPUContext}
 
 // record draws into Picture
 let picture = {
