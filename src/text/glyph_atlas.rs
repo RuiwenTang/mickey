@@ -58,30 +58,27 @@ impl GlyphAtlasManager {
         glyph: &Glyph,
         px_size: f32,
     ) -> Option<GlyphAtlasValue> {
-        let key = &GlyphAtlasKey {
+        let key = GlyphAtlasKey {
             font: font.description.clone(),
             id: glyph.id.0,
             px_size,
         };
 
-        for i in 0..(self.index + 1) {
-            let region = self.textures[i].query_region(key);
+        self.textures
+            .iter()
+            .enumerate()
+            .find_map(|(_, texture)| {
+                texture.query_region(&key).map(|(l, t, w, h)| {
+                    let (lf, tf) = texture.pos_to_uv(l, t);
+                    let (rf, bf) = texture.pos_to_uv(l + w, t + h);
 
-            match region {
-                None => continue,
-                Some((l, t, w, h)) => {
-                    let (lf, tf) = self.textures[self.index].pos_to_uv(l, t);
-                    let (rf, bf) = self.textures[self.index].pos_to_uv(l + w, t + h);
-
-                    return Some(GlyphAtlasValue {
+                    GlyphAtlasValue {
                         rect: Rect::from_ltrb(lf, tf, rf, bf),
-                        texture: self.textures[self.index].get_texture(),
-                    });
-                }
-            }
-        }
-
-        None
+                        texture: texture.get_texture(),
+                    }
+                })
+            })
+            .or_else(|| None)
     }
 
     pub(crate) fn alloc_atlas_region(
@@ -94,10 +91,10 @@ impl GlyphAtlasManager {
     ) -> Option<GlyphAtlasValue> {
         let fs = font.native_font.as_scaled(px_size);
 
-        let key = &GlyphAtlasKey {
+        let key = GlyphAtlasKey {
             font: font.description.clone(),
             id: glyph.id.0,
-            px_size: px_size,
+            px_size,
         };
 
         let outline = fs
@@ -105,22 +102,24 @@ impl GlyphAtlasManager {
             .expect("Font and glyph not match!!");
 
         let bounds = outline.px_bounds();
-        let width = bounds.width().ceil() as u32 + REGION_PADDING * 2;
-        let height = bounds.height().ceil() as u32 + REGION_PADDING * 2;
+        let width = (bounds.width().ceil() as u32 + REGION_PADDING * 2)
+            .min(TEXTURE_SIZE - REGION_PADDING * 2);
+        let height = (bounds.height().ceil() as u32 + REGION_PADDING * 2)
+            .min(TEXTURE_SIZE - REGION_PADDING * 2);
 
-        let mut region = self.textures[self.index].alloc_region(key, width, height);
+        let mut region = self.textures[self.index].alloc_region(&key, width, height);
 
         if region.is_none() {
-            self.textures.push(AtlasTexture::new(
-                TEXTURE_SIZE,
-                TEXTURE_SIZE,
-                self.format,
-                device,
-            ));
-
             self.index += 1;
-
-            region = self.textures[self.index].alloc_region(key, width, height);
+            if self.index >= self.textures.len() {
+                self.textures.push(AtlasTexture::new(
+                    TEXTURE_SIZE,
+                    TEXTURE_SIZE,
+                    self.format,
+                    device,
+                ));
+            }
+            region = self.textures[self.index].alloc_region(&key, width, height);
         }
 
         if region.is_none() {
@@ -129,17 +128,14 @@ impl GlyphAtlasManager {
 
         let (x, y, w, h) = region.unwrap();
 
-        {
-            let mut data: Vec<u8> = Vec::new();
-            data.resize((w * h) as usize, 0);
+        let mut data: Vec<u8> = (0..(w * h)).map(|_| 0u8).collect();
 
-            outline.draw(|x, y, v| {
-                let offset = (y + REGION_PADDING) * w + x + REGION_PADDING;
-                data[offset as usize] = (v * 255.0) as u8;
-            });
+        outline.draw(|x, y, v| {
+            let offset = (y + REGION_PADDING) * w + x + REGION_PADDING;
+            data[offset as usize] = (v * 255.0) as u8;
+        });
 
-            self.textures[self.index].upload(data.as_slice(), x, y, w, h, queue);
-        }
+        self.textures[self.index].upload(data.as_slice(), x, y, w, h, queue);
 
         let (lf, tf) = self.textures[self.index].pos_to_uv(x, y);
         let (rf, bf) = self.textures[self.index].pos_to_uv(x + w, y + h);
