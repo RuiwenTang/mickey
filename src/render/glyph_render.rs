@@ -264,7 +264,8 @@ impl Renderer for TextBlobRender {
 
                 let mut g = glyph.clone();
                 g.position.x += self.pos.x;
-                g.position.y += self.pos.y;
+                // replace y with baseline position
+                g.position.y = self.pos.y;
 
                 let og = fs.outline_glyph(g);
                 if let Some(outlined) = og {

@@ -64,20 +64,24 @@ impl GlyphAtlasManager {
             px_size,
         };
 
-        let region = self.textures[self.index].query_region(key);
+        for i in 0..(self.index + 1) {
+            let region = self.textures[i].query_region(key);
 
-        match region {
-            None => None,
-            Some((l, t, w, h)) => {
-                let (lf, tf) = self.textures[self.index].pos_to_uv(l, t);
-                let (rf, bf) = self.textures[self.index].pos_to_uv(l + w, t + h);
+            match region {
+                None => continue,
+                Some((l, t, w, h)) => {
+                    let (lf, tf) = self.textures[self.index].pos_to_uv(l, t);
+                    let (rf, bf) = self.textures[self.index].pos_to_uv(l + w, t + h);
 
-                Some(GlyphAtlasValue {
-                    rect: Rect::from_ltrb(lf, tf, rf, bf),
-                    texture: self.textures[self.index].get_texture(),
-                })
+                    return Some(GlyphAtlasValue {
+                        rect: Rect::from_ltrb(lf, tf, rf, bf),
+                        texture: self.textures[self.index].get_texture(),
+                    });
+                }
             }
         }
+
+        None
     }
 
     pub(crate) fn alloc_atlas_region(
