@@ -93,6 +93,6 @@ impl common::Renderer for GradientRender {
 }
 
 fn main() {
-    let app = common::App::new("Gradient Example", 800, 800);
+    let app = common::App::new("Gradient Example", 800, 800, false);
     app.run(GradientRender::new());
 }

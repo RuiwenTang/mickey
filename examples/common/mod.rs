@@ -14,14 +14,16 @@ pub struct App {
     title: &'static str,
     width: u32,
     height: u32,
+    keep_flushing: bool,
 }
 
 impl App {
-    pub fn new(title: &'static str, width: u32, height: u32) -> Self {
+    pub fn new(title: &'static str, width: u32, height: u32, keep_flushing: bool) -> Self {
         App {
             title,
             width,
             height,
+            keep_flushing,
         }
     }
 
@@ -68,6 +70,11 @@ impl App {
                 }
                 _ => {}
             },
+            winit::event::Event::AboutToWait => {
+                if self.keep_flushing {
+                    window.request_redraw();
+                }
+            }
             _ => {}
         });
     }

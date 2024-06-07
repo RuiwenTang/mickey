@@ -212,6 +212,6 @@ impl common::Renderer for ShapeRender {
 }
 
 fn main() {
-    let app = common::App::new("Shape Example", 800, 800);
+    let app = common::App::new("Shape Example", 800, 800, false);
     app.run(ShapeRender::new());
 }

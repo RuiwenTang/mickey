@@ -116,6 +116,6 @@ impl common::Renderer for TextRasterView {
 }
 
 fn main() {
-    let app = common::App::new("Text Raster", 800, 800);
+    let app = common::App::new("Text Raster", 800, 800, false);
     app.run(TextRasterView::new());
 }

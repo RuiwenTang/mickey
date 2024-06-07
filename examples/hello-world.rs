@@ -326,7 +326,7 @@ impl common::Renderer for HelloTriangle {
 
 fn main() {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("debug"));
-    let app = App::new("Hello World", 800, 800);
+    let app = App::new("Hello World", 800, 800, false);
 
     app.run(HelloTriangle::new());
 }

@@ -173,6 +173,6 @@ impl common::Renderer for ImageRender {
 }
 
 fn main() {
-    let app = common::App::new("Image Example", 800, 800);
+    let app = common::App::new("Image Example", 800, 800, false);
     app.run(ImageRender::new());
 }
