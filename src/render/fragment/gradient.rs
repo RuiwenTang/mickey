@@ -7,6 +7,7 @@ use crate::{
     core::{Color, LinearGradient, RadialGradient, TileMode},
     gpu::{buffer::StageBuffer, pipeline::Pipeline, GPUContext},
     render::Fragment,
+    Matrix,
 };
 
 use super::{TransformGroup, LINEAR_GRADIENT_PIPELINE_NAME, RADIAL_GRADIENT_PIPELINE_NAME};
@@ -76,13 +77,13 @@ impl LinearGradientFragment {
             gradient.tile_mode,
         );
 
-        let matrix = if gradient.matrix.is_identity(f32::EPSILON) {
+        let matrix = if gradient.matrix.is_identity() {
             gradient.matrix.clone()
         } else {
             if gradient.matrix.is_invertible() {
-                gradient.matrix.try_inverse().unwrap()
+                gradient.matrix.try_invert().unwrap()
             } else {
-                Matrix4::identity()
+                Matrix::new()
             }
         };
 
@@ -93,7 +94,7 @@ impl LinearGradientFragment {
                 transform,
                 Vector4::new(0.0, 0.0, 0.0, 0.0),
             ),
-            matrix,
+            matrix: matrix.matrix,
             pts: [gradient.p1.x, gradient.p1.y, gradient.p2.x, gradient.p2.y],
             gradient_info_range: 0..0,
             matrix_range: 0..0,
@@ -243,13 +244,13 @@ impl RadialGradientFragment {
             gradient.tile_mode,
         );
 
-        let matrix = if gradient.matrix.is_identity(f32::EPSILON) {
+        let matrix = if gradient.matrix.is_identity() {
             gradient.matrix.clone()
         } else {
             if gradient.matrix.is_invertible() {
-                gradient.matrix.try_inverse().unwrap()
+                gradient.matrix.try_invert().unwrap()
             } else {
-                Matrix4::identity()
+                Matrix::new()
             }
         };
 
@@ -260,7 +261,7 @@ impl RadialGradientFragment {
                 transform,
                 Vector4::new(0.0, 0.0, 0.0, 0.0),
             ),
-            matrix,
+            matrix: matrix.matrix,
             infos: [gradient.center.x, gradient.center.y, gradient.radius, 0.0],
             gradient_info_range: 0..0,
             matrix_range: 0..0,

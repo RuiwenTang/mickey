@@ -1,11 +1,9 @@
-use nalgebra::Matrix4;
-
-use super::{paint::ColorType, Color, Point, TileMode};
+use crate::{Color, ColorType, Matrix, Point, TileMode};
 
 /// A gradient with linear direction between two points.
 #[derive(Debug, Clone)]
 pub struct LinearGradient {
-    pub matrix: Matrix4<f32>,
+    pub matrix: Matrix,
     /// The colors to be distributed between the two points.
     pub colors: Vec<Color>,
     /// The position of each color in the gradient. Can be empty or must have same length as `colors`.
@@ -29,7 +27,7 @@ impl LinearGradient {
     /// * `p2` - The end point of the gradient.
     pub fn new(p1: Point, p2: Point) -> Self {
         Self {
-            matrix: Matrix4::identity(),
+            matrix: Matrix::new(),
             colors: Vec::new(),
             stops: Vec::new(),
             p1,
@@ -69,7 +67,7 @@ impl LinearGradient {
 
     /// Replace the transform matrix of the gradient.
     /// The transform matrix is used to transform the gradient to another coordinate space.
-    pub fn with_matrix(mut self, matrix: Matrix4<f32>) -> Self {
+    pub fn with_matrix(mut self, matrix: Matrix) -> Self {
         self.matrix = matrix;
         self
     }
@@ -90,7 +88,7 @@ impl Into<ColorType> for LinearGradient {
 /// A gradient with a given center point and radius.
 #[derive(Debug, Clone)]
 pub struct RadialGradient {
-    pub matrix: Matrix4<f32>,
+    pub matrix: Matrix,
     /// The colors to be distributed between the two points.
     pub colors: Vec<Color>,
     /// The position of each color in the gradient. Can be empty or must have same length as `colors
@@ -114,7 +112,7 @@ impl RadialGradient {
     /// * `radius` - The radius of the gradient.
     pub fn new(center: Point, radius: f32) -> Self {
         Self {
-            matrix: Matrix4::identity(),
+            matrix: Matrix::new(),
             colors: Vec::new(),
             stops: Vec::new(),
             center,
@@ -154,7 +152,7 @@ impl RadialGradient {
 
     /// Replace the transform matrix of the gradient.
     /// The transform matrix is used to transform the gradient to another coordinate space.
-    pub fn with_matrix(mut self, matrix: Matrix4<f32>) -> Self {
+    pub fn with_matrix(mut self, matrix: Matrix) -> Self {
         self.matrix = matrix;
         self
     }
