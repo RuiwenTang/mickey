@@ -8,6 +8,8 @@ pub trait Renderer {
     fn on_init(&mut self, format: wgpu::TextureFormat, device: &wgpu::Device, queue: &wgpu::Queue);
 
     fn on_render(&mut self, surface: &wgpu::Surface, device: &wgpu::Device, queue: &wgpu::Queue);
+
+    fn on_mouse_move(&mut self, _x: f32, _y: f32) {}
 }
 
 pub struct App {
@@ -46,6 +48,10 @@ impl App {
         let (adapter, device, queue) = self.request_device_and_queue(&instance, &surface);
 
         let size = window.inner_size();
+
+        let sx = self.width as f32 / size.width as f32;
+        let sy = self.height as f32 / size.height as f32;
+
         let mut config = surface
             .get_default_config(&adapter, size.width, size.height)
             .unwrap();
@@ -67,6 +73,9 @@ impl App {
                 }
                 winit::event::WindowEvent::RedrawRequested => {
                     render.on_render(&surface, &device, &queue);
+                }
+                winit::event::WindowEvent::CursorMoved { position, .. } => {
+                    render.on_mouse_move(position.x as f32 * sx, position.y as f32 * sy);
                 }
                 _ => {}
             },

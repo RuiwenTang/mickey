@@ -1,13 +1,19 @@
 use std::time;
 
 use mickey::*;
+use nalgebra::Vector2;
 
 mod common;
+
+fn radian_to_degree(radian: f32) -> f32 {
+    radian * 180.0 / std::f32::consts::PI
+}
 
 struct NanovgRender {
     begin_time: time::Instant,
     width: f32,
     height: f32,
+    mouse_pos: (f32, f32),
     context: Option<GPUContext>,
 }
 
@@ -17,6 +23,7 @@ impl NanovgRender {
             begin_time: time::Instant::now(),
             width,
             height,
+            mouse_pos: (0.0, 0.0),
             context: None,
         }
     }
@@ -39,7 +46,7 @@ impl NanovgRender {
         let rx = x + w - ex;
         let ry = y + ey;
         let br = if ex < ey { ex * 0.5 } else { ey * 0.5 };
-        let blink = 1.0 - (t * 0.5).sin().powf(200.0) * 0.8;
+        let blink = 1.0 - (t * 0.5).sin().powf(100.0) * 0.8;
 
         let mut bg = Paint::new();
         bg.style = Style::Fill;
@@ -73,12 +80,234 @@ impl NanovgRender {
 
         recorder.draw_oval(&Rect::from_ltrb(lx - ex, ly - ey, lx + ex, ly + ey), &bg);
         recorder.draw_oval(&Rect::from_ltrb(rx - ex, ry - ey, rx + ex, ry + ey), &bg);
+
+        let mut dx = (mx - rx) / (ex * 10.0);
+        let mut dy = (my - ry) / (ey * 10.0);
+        let mut d = (dx * dx + dy * dy).sqrt();
+
+        if d > 1.0 {
+            dx /= d;
+            dy /= d;
+        }
+
+        dx *= ex * 0.4;
+        dy *= ey * 0.5;
+
+        bg.color = Color::from_rgba_u8(32, 32, 32, 255).into();
+        recorder.draw_oval(
+            &Rect::from_ltrb(
+                lx + dx - br,
+                ly + dy + ey * 0.25 * (1.0 - blink as f32) - br * blink as f32,
+                lx + dx + br,
+                ly + dy + ey * 0.25 * (1.0 - blink as f32) + br * blink as f32,
+            ),
+            &bg,
+        );
+
+        dx = (mx - rx) / (ex * 10.0);
+        dy = (my - ry) / (ey * 10.0);
+        d = (dx * dx + dy * dy).sqrt();
+        if d > 1.0 {
+            dx /= d;
+            dy /= d;
+        }
+
+        dx *= ex * 0.4;
+        dy *= ey * 0.5;
+
+        recorder.draw_oval(
+            &Rect::from_ltrb(
+                rx + dx - br,
+                ry + dy + ey * 0.25 * (1.0 - blink as f32) - br * blink as f32,
+                rx + dx + br,
+                ry + dy + ey * 0.25 * (1.0 - blink as f32) + br * blink as f32,
+            ),
+            &bg,
+        );
+
+        let mut gloss = Paint::new();
+        gloss.style = Style::Fill;
+        gloss.color = RadialGradient::new(Point::from(lx - ex * 0.25, ly - ey * 0.5), ex * 0.75)
+            .add_color(Color::from_rgba_u8(225, 225, 225, 128))
+            .add_color(Color::from_rgba_u8(225, 225, 225, 0))
+            .into();
+
+        recorder.draw_oval(&Rect::from_ltrb(lx - ex, ly - ey, lx + ex, ly + ey), &gloss);
+
+        gloss.color = RadialGradient::new(Point::from(rx - ex * 0.25, ry - ey * 0.5), ex * 0.75)
+            .add_color(Color::from_rgba_u8(225, 225, 225, 128))
+            .add_color(Color::from_rgba_u8(225, 225, 225, 0))
+            .into();
+
+        recorder.draw_oval(&Rect::from_ltrb(rx - ex, ry - ey, rx + ex, ry + ey), &gloss);
+    }
+
+    fn draw_color_wheel(
+        &self,
+        recorder: &mut PictureRecorder,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        t: f64,
+    ) {
+        let hue = (t * 0.12).sin() as f32;
+
+        let cx = x + w * 0.5;
+        let cy = y + h * 0.5;
+        let r1 = w.min(h) * 0.5 - 5.0;
+        let r0 = r1 - 20.0;
+        let aeps = 0.5 / r1; // half a pixel arc length in radians (2pi cancels out).
+
+        for i in 0..6 {
+            let a0 = i as f32 / 6.0 * std::f32::consts::PI * 2.0 - aeps;
+            let a1 = (i as f32 + 1.0) / 6.0 * std::f32::consts::PI * 2.0 + aeps;
+
+            let p1_x = cx + r0 * a0.cos();
+            let p1_y = cy + r0 * a0.sin();
+
+            let p3_x = cx + r0 * a1.cos();
+            let p3_y = cy + r0 * a1.sin();
+
+            let p1r = Vector2::new(p1_x - cx, p1_y - cy).normalize();
+            let p3r = Vector2::new(p3_x - cx, p3_y - cy).normalize();
+            let p2rt = ((p1r + p3r) * 0.5).normalize();
+            let p2r = Vector2::new(cx, cy)
+                + p2rt
+                    * (r0
+                        + r0 * std::f32::consts::PI
+                            * 0.1
+                            * ((a1 - a0) * 2.0 / std::f32::consts::PI).powi(2));
+
+            let p4_x = cx + a0.cos() * r1;
+            let p4_y = cy + a0.sin() * r1;
+
+            let p6_x = cx + a1.cos() * r1;
+            let p6_y = cy + a1.sin() * r1;
+
+            let p4r = Vector2::new(p4_x - cx, p4_y - cy).normalize();
+            let p6r = Vector2::new(p6_x - cx, p6_y - cy).normalize();
+            let p5rt = ((p4r + p6r) * 0.5).normalize();
+            let p5r = Vector2::new(cx, cy)
+                + p5rt
+                    * (r1
+                        + r1 * std::f32::consts::PI
+                            * 0.1
+                            * ((a1 - a0) * 2.0 / std::f32::consts::PI).powi(2));
+
+            let p1c = Vector2::new(p1_x - cx, p1_y - cy);
+
+            let path = Path::new()
+                .move_to(p1_x, p1_y)
+                .quad_to(p2r.x, p2r.y, p3_x, p3_y)
+                .line_to(p6_x, p6_y)
+                .quad_to(p5r.x, p5r.y, p4_x, p4_y)
+                .close();
+
+            let ax = cx + a0.cos() * (r0 + r1) * 0.5;
+            let ay = cy + a0.sin() * (r0 + r1) * 0.5;
+            let bx = cx + a1.cos() * (r0 + r1) * 0.5;
+            let by = cy + a1.sin() * (r0 + r1) * 0.5;
+
+            let mut paint = Paint::new();
+            paint.color = LinearGradient::new(Point::from(ax, ay), Point::from(bx, by))
+                .add_color(Color::from_hsla(
+                    a0 / (2.0 * std::f32::consts::PI),
+                    1.0,
+                    0.55,
+                    255,
+                ))
+                .add_color(Color::from_hsla(
+                    a1 / (2.0 * std::f32::consts::PI),
+                    1.0,
+                    0.55,
+                    255,
+                ))
+                .into();
+
+            recorder.draw_path(path, &paint);
+        }
+
+        let mut paint = Paint::new();
+
+        paint.style = Stroke::new()
+            .with_join(StrokeJoin::Round)
+            .with_width(1.0)
+            .into();
+        paint.color = Color::from_rgba_u8(0, 0, 0, 64).into();
+
+        recorder.draw_circle(cx, cy, r0 - 0.5, &paint);
+        recorder.draw_circle(cx, cy, r1 - 0.5, &paint);
+
+        recorder.save();
+        recorder.translate(cx, cy);
+
+        recorder.rotate(radian_to_degree(hue * 2.0 * std::f32::consts::PI));
+
+        paint.style = Stroke::new().with_width(2.0).into();
+        paint.color = Color::from_rgba_u8(255, 255, 255, 192).into();
+
+        recorder.draw_rect(&Rect::from_xywh(r0 - 1.0, -3.0, r1 - r0 + 2.0, 6.0), &paint);
+
+        paint.style = Stroke::new().with_width(1.0).into();
+        paint.color = Color::from_rgba_u8(0, 0, 0, 64).into();
+        recorder.draw_rect(
+            &Rect::from_xywh(r0 - 2.0, -4.0, r1 - r0 + 2.0 + 2.0, 6.0 + 2.0),
+            &paint,
+        );
+
+        let r = r0 - 6.0;
+        let ax = (120.0 / 180.0 * std::f32::consts::PI).cos() * r;
+        let ay = (120.0 / 180.0 * std::f32::consts::PI).sin() * r;
+        let bx = (-120.0 / 180.0 * std::f32::consts::PI).cos() * r;
+        let by = (-120.0 / 180.0 * std::f32::consts::PI).sin() * r;
+
+        let path = Path::new()
+            .move_to(r, 0.0)
+            .line_to(ax, ay)
+            .line_to(bx, by)
+            .close();
+
+        paint.style = Style::Fill;
+        paint.color = LinearGradient::new(Point::from(r, 0.0), Point::from(ax, ay))
+            .add_color(Color::from_hsla(hue, 1.0, 0.5, 255))
+            .add_color(Color::from_rgba_u8(255, 255, 255, 255))
+            .into();
+
+        recorder.draw_path(path.clone(), &paint);
+
+        paint.color =
+            LinearGradient::new(Point::from((r + ax) * 0.5, ay * 0.5), Point::from(bx, by))
+                .add_color(Color::transparent())
+                .add_color(Color::black())
+                .into();
+
+        recorder.draw_path(path.clone(), &paint);
+
+        let ax = (120.0 / 180.0 * std::f32::consts::PI).cos() * r * 0.3;
+        let ay = (120.0 / 180.0 * std::f32::consts::PI).sin() * r * 0.4;
+
+        paint.style = Stroke::new().with_width(2.0).into();
+        paint.color = Color::white().with_alpha(192.0 / 255.0).into();
+
+        recorder.draw_circle(ax, ay, 5.0, &paint);
+
+        paint.color = RadialGradient::new(Point::from(ax, ay), 9.0)
+            .with_colors_stops(
+                vec![Color::from_rgba_u8(0, 0, 0, 64), Color::transparent()],
+                vec![7.0 / 9.0, 1.0],
+            )
+            .into();
+
+        recorder.draw_circle(ax, ay, 8.0, &paint);
+
+        recorder.restore();
     }
 
     fn render(&self) -> Picture {
         let current = time::Instant::now();
 
-        let delta = (current - self.begin_time).as_millis() as f64;
+        let delta = (current - self.begin_time).as_secs_f64();
 
         let mut recorder = PictureRecorder::new();
 
@@ -88,8 +317,17 @@ impl NanovgRender {
             50.0,
             150.0,
             100.0,
-            0.0,
-            0.0,
+            self.mouse_pos.0,
+            self.mouse_pos.1,
+            delta,
+        );
+
+        self.draw_color_wheel(
+            &mut recorder,
+            self.width - 300.0,
+            self.height - 300.0,
+            250.0,
+            250.0,
             delta,
         );
 
@@ -131,6 +369,10 @@ impl common::Renderer for NanovgRender {
         );
 
         text.present();
+    }
+
+    fn on_mouse_move(&mut self, x: f32, y: f32) {
+        self.mouse_pos = (x, y);
     }
 }
 
