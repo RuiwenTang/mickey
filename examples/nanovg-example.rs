@@ -28,6 +28,91 @@ impl NanovgRender {
         }
     }
 
+    fn draw_graph(&self, recorder: &mut PictureRecorder, x: f32, y: f32, w: f32, h: f32, t: f64) {
+        let t = t as f32;
+
+        let samples = [
+            (1.0 + (t * 1.2345).sin() + ((t * 0.3345).cos() * 0.44).sin()) * 0.5,
+            (1.0 + (t * 0.68363).sin() + ((t * 1.3).cos() * 1.55).sin()) * 0.5,
+            (1.0 + (t * 1.1642).sin() + ((t * 0.33457).cos() * 1.24).sin()) * 0.5,
+            (1.0 + (t * 0.56345).sin() + ((t * 1.63).cos() * 0.14).sin()) * 0.5,
+            (1.0 + (t * 1.6245).sin() + ((t * 0.254).cos() * 0.3).sin()) * 0.5,
+            (1.0 + (t * 0.345).sin() + ((t * 0.03).cos() * 0.6).sin()) * 0.5,
+        ];
+
+        let dx = w / 5.0;
+
+        let sx: Vec<f32> = samples
+            .into_iter()
+            .enumerate()
+            .map(|(i, _v)| -> f32 { x + i as f32 * dx })
+            .collect();
+
+        let sy: Vec<f32> = samples
+            .into_iter()
+            .enumerate()
+            .map(|(_i, v)| -> f32 { y + h * v * 0.8 })
+            .collect();
+
+        let mut paint = Paint::new();
+
+        paint.color = LinearGradient::new(Point::from(x, y), Point::from(x, y + h))
+            .add_color(Color::from_rgba_u8(0, 160, 192, 0))
+            .add_color(Color::from_rgba_u8(0, 160, 192, 64))
+            .into();
+
+        let mut path = Path::new().move_to(sx[0], sy[0]);
+
+        for i in 1..6 {
+            path = path.cubic_to(
+                sx[i - 1] + dx * 0.5,
+                sy[i - 1],
+                sx[i] - dx * 0.5,
+                sy[i],
+                sx[i],
+                sy[i],
+            );
+        }
+
+        path = path.line_to(x + w, y + h).line_to(x, y + h).close();
+
+        recorder.draw_path(path, &paint);
+
+        let mut graph_line = Path::new().move_to(sx[0], sy[0] + 2.0);
+
+        for i in 1..6 {
+            graph_line = graph_line.cubic_to(
+                sx[i - 1] + dx * 0.5,
+                sy[i - 1] + 2.0,
+                sx[i] - dx * 0.5,
+                sy[i] + 2.0,
+                sx[i],
+                sy[i] + 2.0,
+            );
+        }
+
+        paint.color = Color::from_rgba_u8(0, 0, 0, 32).into();
+        paint.style = Stroke::new().with_width(3.0).into();
+
+        recorder.draw_path(graph_line, &paint);
+
+        let mut graph_line = Path::new().move_to(sx[0], sy[0]);
+
+        for i in 1..6 {
+            graph_line = graph_line.cubic_to(
+                sx[i - 1] + dx * 0.5,
+                sy[i - 1],
+                sx[i] - dx * 0.5,
+                sy[i],
+                sx[i],
+                sy[i],
+            );
+        }
+
+        paint.color = Color::from_rgba_u8(0, 160, 192, 255).into();
+        recorder.draw_path(graph_line, &paint);
+    }
+
     fn draw_eyes(
         &self,
         recorder: &mut PictureRecorder,
@@ -380,6 +465,63 @@ impl NanovgRender {
         }
     }
 
+    fn draw_caps(&self, recorder: &mut PictureRecorder, x: f32, y: f32, width: f32) {
+        let caps = [StrokeCap::Butt, StrokeCap::Round, StrokeCap::Square];
+        let line_width = 8.0;
+
+        let mut paint = Paint::new();
+        paint.style = Style::Fill;
+        paint.color = Color::from_rgba_u8(255, 255, 255, 32).into();
+
+        recorder.draw_rect(
+            &Rect::from_xywh(x - line_width / 2.0, y, width + line_width, 40.0),
+            &paint,
+        );
+        recorder.draw_rect(&Rect::from_xywh(x, y, width, 40.0), &paint);
+
+        paint.color = Color::black().into();
+
+        for (i, cap) in caps.iter().enumerate() {
+            paint.style = Stroke::new().with_width(line_width).with_cap(*cap).into();
+
+            let path = Path::new()
+                .move_to(x, y + (i as f32 * 10.0) + 5.0)
+                .line_to(x + width, y + (i as f32 * 10.0) + 5.0);
+
+            recorder.draw_path(path, &paint);
+        }
+    }
+
+    fn draw_scissor(&self, recorder: &mut PictureRecorder, x: f32, y: f32, t: f64) {
+        recorder.save();
+        recorder.translate(x, y);
+        recorder.rotate(5.0);
+
+        let mut paint = Paint::new();
+        paint.style = Style::Fill;
+        paint.color = Color::from_rgba_u8(255, 0, 0, 255).into();
+        recorder.draw_rect(&Rect::from_xywh(-20.0, -20.0, 60.0, 40.0), &paint);
+
+        recorder.translate(40.0, 0.0);
+        recorder.rotate(radian_to_degree(t as f32));
+
+        paint.color = Color::from_rgba_u8(255, 128, 0, 64).into();
+
+        let rect = Rect::from_xywh(-20.0, -10.0, 60.0, 30.0);
+
+        recorder.draw_rect(&rect, &paint);
+
+        recorder.clip_rect(&rect, ClipOp::Intersect);
+
+        recorder.rotate(radian_to_degree(t as f32));
+
+        paint.color = Color::from_rgba_u8(255, 128, 0, 255).into();
+
+        recorder.draw_rect(&rect, &paint);
+
+        recorder.restore();
+    }
+
     fn render(&self) -> Picture {
         let current = time::Instant::now();
 
@@ -387,6 +529,14 @@ impl NanovgRender {
 
         let mut recorder = PictureRecorder::new();
 
+        self.draw_graph(
+            &mut recorder,
+            0.0,
+            self.height / 2.0,
+            self.width,
+            self.height / 2.0,
+            delta,
+        );
         self.draw_eyes(
             &mut recorder,
             self.width - 250.0,
@@ -409,6 +559,8 @@ impl NanovgRender {
 
         self.draw_lines(&mut recorder, 120.0, self.height - 50.0, 600.0, delta);
         self.draw_widths(&mut recorder, 10.0, 50.0, 30.0);
+        self.draw_caps(&mut recorder, 10.0, 300.0, 30.0);
+        self.draw_scissor(&mut recorder, 50.0, self.height - 80.0, delta);
 
         return recorder.finish_record();
     }

@@ -211,9 +211,15 @@ impl CubicCoeff {
         let p4 = p4.transform(transform);
         let coeff = CubicCoeff::from(&p1, &p2, &p3, &p4);
 
-        let stops: Vec<f32> = vec![0.0, 1.0];
+        let mut stops: Vec<f32> = vec![0.0, 0.5];
 
-        return flatten_recursive(&coeff, 0.0, 1.0, 1, stops);
+        stops = flatten_recursive(&coeff, 0.0, 0.5, 1, stops);
+
+        stops.push(1.0);
+
+        stops = flatten_recursive(&coeff, 0.5, 1.0, stops.len() - 1, stops);
+
+        return stops;
     }
 }
 
