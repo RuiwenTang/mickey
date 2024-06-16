@@ -195,8 +195,6 @@ impl NanovgRender {
                             * 0.1
                             * ((a1 - a0) * 2.0 / std::f32::consts::PI).powi(2));
 
-            let p1c = Vector2::new(p1_x - cx, p1_y - cy);
-
             let path = Path::new()
                 .move_to(p1_x, p1_y)
                 .quad_to(p2r.x, p2r.y, p3_x, p3_y)
@@ -304,6 +302,84 @@ impl NanovgRender {
         recorder.restore();
     }
 
+    fn draw_lines(&self, recorder: &mut PictureRecorder, x: f32, y: f32, w: f32, t: f64) {
+        let pad = 5.0;
+        let s = w / 9.0 - pad * 2.0;
+        let t = t as f32;
+        let pts: [Point; 4] = [
+            Point::from(
+                -s * 0.25 + (t * 0.3).cos() * s * 0.5,
+                (t * 0.3).sin() * s * 0.5,
+            ),
+            Point::from(-s * 0.25, 0.0),
+            Point::from(s * 0.25, 0.0),
+            Point::from(
+                s * 0.25 + (-t * 0.3).cos() * s * 0.5,
+                (-t * 0.3).sin() * s * 0.5,
+            ),
+        ];
+
+        let joins: [StrokeJoin; 3] = [StrokeJoin::Miter, StrokeJoin::Round, StrokeJoin::Bevel];
+        let caps: [StrokeCap; 3] = [StrokeCap::Butt, StrokeCap::Round, StrokeCap::Square];
+
+        for i in 0..3 {
+            for j in 0..3 {
+                let fx = x + s * 0.5 + ((i as f32) * 3.0 + j as f32) / 9.0 * w + pad;
+                let fy = y - s * 0.5 + pad;
+
+                recorder.save();
+
+                recorder.translate(fx, fy);
+
+                let mut paint = Paint::new();
+                paint.style = Stroke::new()
+                    .with_width(s * 0.3)
+                    .with_cap(caps[i])
+                    .with_join(joins[j])
+                    .into();
+                paint.color = Color::from_rgba_u8(0, 0, 0, 160).into();
+
+                let path = Path::new()
+                    .move_to_point(pts[0])
+                    .line_to_point(pts[1])
+                    .line_to_point(pts[2])
+                    .line_to_point(pts[3]);
+
+                recorder.draw_path(path.clone(), &paint);
+
+                paint.style = Stroke::new()
+                    .with_width(1.0)
+                    .with_cap(StrokeCap::Butt)
+                    .with_join(StrokeJoin::Bevel)
+                    .into();
+                paint.color = Color::from_rgba_u8(0, 192, 255, 255).into();
+
+                recorder.draw_path(path, &paint);
+
+                recorder.restore();
+            }
+        }
+    }
+
+    fn draw_widths(&self, recorder: &mut PictureRecorder, x: f32, y: f32, width: f32) {
+        let mut paint = Paint::new();
+        paint.color = Color::from_rgba_u8(0, 0, 0, 255).into();
+
+        let mut y = y;
+        for i in 0..20 {
+            let w = (i as f32 + 0.5) * 0.1;
+            paint.style = Stroke::new().with_width(w).into();
+
+            let path = Path::new()
+                .move_to(x, y)
+                .line_to(x + width, y + width * 0.3);
+
+            recorder.draw_path(path, &paint);
+
+            y += 10.0;
+        }
+    }
+
     fn render(&self) -> Picture {
         let current = time::Instant::now();
 
@@ -330,6 +406,9 @@ impl NanovgRender {
             250.0,
             delta,
         );
+
+        self.draw_lines(&mut recorder, 120.0, self.height - 50.0, 600.0, delta);
+        self.draw_widths(&mut recorder, 10.0, 50.0, 30.0);
 
         return recorder.finish_record();
     }
