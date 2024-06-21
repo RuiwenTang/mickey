@@ -1,4 +1,4 @@
-use std::time;
+use std::{rc::Rc, time};
 
 use mickey::*;
 use nalgebra::Vector2;
@@ -14,16 +14,30 @@ struct NanovgRender {
     width: f32,
     height: f32,
     mouse_pos: (f32, f32),
+    font: Rc<Font>,
     context: Option<GPUContext>,
 }
 
 impl NanovgRender {
     fn new(width: f32, height: f32) -> Self {
+        let font = Font::new(
+            FontDescription {
+                name: "0xProtoNerdFont-Regular".to_string(),
+                family: "0xProtoNerdFont".to_string(),
+                style: FontStyle::normal(),
+            },
+            ab_glyph::FontArc::try_from_slice(include_bytes!(
+                "./assets/0xProto/0xProtoNerdFont-Regular.ttf"
+            ))
+            .expect("Failed to load font"),
+        );
+
         Self {
             begin_time: time::Instant::now(),
             width,
             height,
             mouse_pos: (0.0, 0.0),
+            font: Rc::new(font),
             context: None,
         }
     }
@@ -111,6 +125,89 @@ impl NanovgRender {
 
         paint.color = Color::from_rgba_u8(0, 160, 192, 255).into();
         recorder.draw_path(graph_line, &paint);
+
+        paint.style = Style::Fill;
+
+        for i in 0..6 {
+            paint.color = RadialGradient::new(Point::from(sx[i], sy[i] + 2.0), 8.0)
+                .with_colors_stops(
+                    vec![Color::from_rgba_u8(0, 0, 0, 32), Color::transparent()],
+                    vec![3.0 / 8.0, 1.0],
+                )
+                .into();
+
+            recorder.draw_rect(
+                &Rect::from_xywh(sx[i] - 10.0, sy[i] - 8.0, 20.0, 20.0),
+                &paint,
+            );
+
+            paint.color = Color::from_rgba_u8(0, 160, 192, 255).into();
+            recorder.draw_circle(sx[i], sy[i], 4.0, &paint);
+
+            paint.color = Color::from_rgba_u8(220, 220, 220, 255).into();
+            recorder.draw_circle(sx[i], sy[i], 2.0, &paint);
+        }
+    }
+
+    fn draw_window(
+        &self,
+        recorder: &mut PictureRecorder,
+        title: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        let corner_radius = 3.0;
+
+        let rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x - 5.0, y - 5.0, w + 10.0, h + 10.0),
+            corner_radius,
+            corner_radius,
+        );
+
+        let mut paint = Paint::new();
+        paint.color = Color::from_rgba_u8(0, 0, 0, 64).into();
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.color = Color::from_rgba_u8(28, 30, 34, 192).into();
+
+        let rrect = RRect::from_rect_xy(Rect::from_xywh(x, y, w, h), corner_radius, corner_radius);
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.color = LinearGradient::new(Point::from(x, y), Point::from(x, y + 15.0))
+            .add_color(Color::from_rgba_u8(255, 255, 255, 8))
+            .add_color(Color::from_rgba_u8(0, 0, 0, 16))
+            .into();
+
+        let rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 1.0, y + 1.0, w - 2.0, 30.0),
+            corner_radius - 1.0,
+            corner_radius - 1.0,
+        );
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.style = Stroke::new().with_width(3.0).into();
+        paint.color = Color::from_rgba_u8(0, 0, 0, 32).into();
+
+        let header = Path::new()
+            .move_to(x + 0.5, y + 0.5 + 30.0)
+            .move_to(x + 0.5 + w - 1.0, y + 0.5 + 30.0);
+
+        recorder.draw_path(header, &paint);
+
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 15.0).build(title);
+
+        let tw = text_blob.width;
+        let th = text_blob.height;
+        recorder.draw_text(
+            text_blob,
+            Point::from(x + (w - tw) * 0.5, y + th),
+            Color::from_rgba_u8(220, 220, 220, 160),
+        );
     }
 
     fn draw_eyes(
@@ -561,6 +658,8 @@ impl NanovgRender {
         self.draw_widths(&mut recorder, 10.0, 50.0, 30.0);
         self.draw_caps(&mut recorder, 10.0, 300.0, 30.0);
         self.draw_scissor(&mut recorder, 50.0, self.height - 80.0, delta);
+
+        self.draw_window(&mut recorder, "Widgets 'n Stuff", 50.0, 50.0, 300.0, 400.0);
 
         return recorder.finish_record();
     }
