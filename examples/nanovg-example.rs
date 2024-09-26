@@ -210,6 +210,143 @@ impl NanovgRender {
         );
     }
 
+    fn draw_search_box(
+        &self,
+        recorder: &mut PictureRecorder,
+        title: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        let corner_radius = h / 2.0 - 1.0;
+        let mut paint = Paint::new();
+
+        let mut rrect =
+            RRect::from_rect_xy(Rect::from_xywh(x, y, w, h), corner_radius, corner_radius);
+
+        paint.color = LinearGradient::new(Point::from(x, y), Point::from(x, y + h))
+            .with_colors(vec![
+                Color::from_rgba_u8(0, 0, 0, 16),
+                Color::from_rgba_u8(0, 0, 0, 92),
+            ])
+            .into();
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.color = Color::from_rgba_u8(0, 0, 0, 48).into();
+        rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 0.5, y + 0.5, w - 1.0, h - 1.0),
+            corner_radius - 0.5,
+            corner_radius - 0.5,
+        );
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        let search_icon = TextBlobBuilder::new(self.font.clone(), h * 0.6).build("\u{f002}");
+
+        recorder.draw_text(
+            search_icon,
+            Point {
+                x: x + h * 0.3,
+                y: y + h * 0.8,
+            },
+            Color::from_rgba_u8(255, 255, 255, 32),
+        );
+
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 17.0).build(title);
+
+        recorder.draw_text(
+            text_blob,
+            Point {
+                x: x + h * 1.05,
+                y: y + h * 0.5 + 6.0,
+            },
+            Color::from_rgba_u8(255, 255, 255, 32),
+        );
+
+        let cancle_icon = TextBlobBuilder::new(self.font.clone(), h * 0.6).build("\u{f2d3}");
+
+        recorder.draw_text(
+            cancle_icon,
+            Point {
+                x: x + w - h * 1.0,
+                y: y + h * 0.7,
+            },
+            Color::from_rgba_u8(255, 255, 255, 32),
+        );
+    }
+
+    fn draw_drop_down(
+        &self,
+        recorder: &mut PictureRecorder,
+        text: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        let corner_radius = 4.0;
+        let mut paint = Paint::new();
+        paint.color = LinearGradient::new(Point::from(x, y), Point::from(x, y + h))
+            .with_colors(vec![
+                Color::from_rgba_u8(255, 255, 255, 16),
+                Color::from_rgba_u8(0, 0, 0, 16),
+            ])
+            .into();
+
+        let mut rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 1.0, y + 1.0, w - 2.0, h - 2.0),
+            corner_radius,
+            corner_radius,
+        );
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.style = Stroke::new().with_width(2.0).into();
+        paint.color = Color::from_rgba_u8(0, 0, 0, 48).into();
+
+        rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 0.5, y + 0.5, w - 1.0, h - 1.0),
+            corner_radius - 0.5,
+            corner_radius - 0.5,
+        );
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 17.0).build(text);
+
+        recorder.draw_text(
+            text_blob,
+            Point {
+                x: x + h * 0.3,
+                y: y + h * 0.7,
+            },
+            Color::from_rgba_u8(255, 255, 255, 160),
+        );
+
+        let angle_right = TextBlobBuilder::new(self.font.clone(), h * 1.1).build("\u{f105}");
+
+        recorder.draw_text(
+            angle_right,
+            Point {
+                x: x + w - h * 0.8,
+                y: y + h * 0.9,
+            },
+            Color::from_rgba_u8(255, 255, 255, 160),
+        );
+    }
+
+    fn draw_label(&self, recorder: &mut PictureRecorder, text: &str, x: f32, y: f32, h: f32) {
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 20.0).build(text);
+
+        recorder.draw_text(
+            text_blob,
+            Point { x, y: y + h * 0.9 },
+            Color::from_rgba_u8(255, 255, 255, 128),
+        );
+    }
+
     fn draw_eyes(
         &self,
         recorder: &mut PictureRecorder,
@@ -660,6 +797,19 @@ impl NanovgRender {
         self.draw_scissor(&mut recorder, 50.0, self.height - 80.0, delta);
 
         self.draw_window(&mut recorder, "Widgets 'n Stuff", 50.0, 50.0, 300.0, 400.0);
+
+        let x = 60.0;
+        let mut y = 95.0;
+
+        self.draw_search_box(&mut recorder, "Search", x, y, 280.0, 25.0);
+
+        y += 40.0;
+
+        self.draw_drop_down(&mut recorder, "Effects", x, y, 280.0, 28.0);
+
+        y += 45.0;
+
+        self.draw_label(&mut recorder, "Login", x, y, 20.0);
 
         return recorder.finish_record();
     }
