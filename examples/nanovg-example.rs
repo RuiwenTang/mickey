@@ -756,6 +756,206 @@ impl NanovgRender {
         recorder.restore();
     }
 
+    fn draw_edit_box_base(&self, recorder: &mut PictureRecorder, x: f32, y: f32, w: f32, h: f32) {
+        let mut paint = Paint::new();
+        paint.color = Color::from_rgba_u8(255, 255, 255, 32).into();
+
+        let rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 1.0, y + 1.0, w - 2.0, h - 2.0),
+            3.0,
+            3.0,
+        );
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.color = Color::from_rgba_u8(0, 0, 0, 48).into();
+        paint.style = Stroke::new().with_width(1.0).into();
+
+        let rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 0.5, y + 0.5, w - 1.0, h - 1.0),
+            3.5,
+            3.5,
+        );
+        recorder.draw_rrect(&rrect, &paint);
+    }
+
+    fn draw_edit_box(
+        &self,
+        recorder: &mut PictureRecorder,
+        text: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        self.draw_edit_box_base(recorder, x, y, w, h);
+
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 17.0).build(text);
+
+        recorder.draw_text(
+            text_blob,
+            Point {
+                x: x + h * 0.3,
+                y: y + h * 0.7,
+            },
+            Color::from_rgba_u8(255, 255, 255, 64),
+        );
+    }
+
+    fn draw_edit_box_num(
+        &self,
+        recorder: &mut PictureRecorder,
+        text: &str,
+        units: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        self.draw_edit_box_base(recorder, x, y, w, h);
+
+        let units_blob = TextBlobBuilder::new(self.font.clone(), 17.0).build(units);
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 20.0).build(text);
+
+        let uw = units_blob.width;
+        let tw = text_blob.width;
+
+        recorder.draw_text(
+            units_blob,
+            Point {
+                x: x + w - h * 0.3 - uw,
+                y: y + h * 0.6,
+            },
+            Color::from_rgba_u8(255, 255, 255, 64),
+        );
+
+        recorder.draw_text(
+            text_blob,
+            Point {
+                x: x + w - h * 0.5 - uw - tw,
+                y: y + h * 0.65,
+            },
+            Color::from_rgba_u8(255, 255, 255, 128),
+        );
+    }
+
+    fn draw_check_box(&self, recorder: &mut PictureRecorder, text: &str, x: f32, y: f32, h: f32) {
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 17.0).build(text);
+
+        recorder.draw_text(
+            text_blob,
+            Point {
+                x: x + 28.0,
+                y: y + h * 0.7,
+            },
+            Color::from_rgba_u8(255, 255, 255, 160),
+        );
+
+        let rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 1.0, y + h * 0.5 - 9.0 + 1.0, 18.0, 18.0),
+            3.0,
+            3.0,
+        );
+
+        let mut paint = Paint::new();
+        paint.style = Style::Fill;
+        paint.color = Color::from_rgba_u8(0, 0, 0, 128).into();
+        recorder.draw_rrect(&rrect, &paint);
+
+        let icon_check = TextBlobBuilder::new(self.font.clone(), 20.0).build("\u{f00c}");
+
+        recorder.draw_text(
+            icon_check,
+            Point {
+                x: x + 2.0,
+                y: y + h * 0.8,
+            },
+            Color::from_rgba_u8(255, 255, 255, 128),
+        );
+    }
+
+    fn draw_button(
+        &self,
+        recorder: &mut PictureRecorder,
+        text: &str,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        color: Color,
+        pre_icon: Option<&str>,
+    ) {
+        let corner_radius = 4.0;
+
+        let mut paint = Paint::new();
+        paint.style = Style::Fill;
+        paint.color = color.clone().into();
+
+        let rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 1.0, y + 1.0, w - 2.0, h - 2.0),
+            corner_radius,
+            corner_radius,
+        );
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.color = LinearGradient::new(Point { x, y }, Point { x, y: y + h })
+            .with_colors(vec![
+                Color::from_rgba_u8(255, 255, 255, 32),
+                Color::from_rgba_u8(0, 0, 0, 132),
+            ])
+            .into();
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        paint.color = Color::from_rgba_u8(0, 0, 0, 48).into();
+        paint.style = Stroke::new().with_width(1.0).into();
+
+        let rrect = RRect::from_rect_xy(
+            Rect::from_xywh(x + 0.5, y + 0.5, w - 1.0, h - 1.0),
+            corner_radius - 0.5,
+            corner_radius - 0.5,
+        );
+
+        recorder.draw_rrect(&rrect, &paint);
+
+        let text_blob = TextBlobBuilder::new(self.font.clone(), 17.0).build(text);
+
+        let tw = text_blob.width;
+        let mut iw = 0.0;
+
+        if let Some(icon) = pre_icon {
+            let icon_blob = TextBlobBuilder::new(self.font.clone(), h * 0.8).build(icon);
+            iw = icon_blob.width;
+            recorder.draw_text(
+                icon_blob,
+                Point {
+                    x: x + w * 0.5 - tw * 0.5 - iw - 4.0,
+                    y: y + h * 0.75,
+                },
+                Color::from_rgba_u8(255, 255, 255, 128),
+            );
+        }
+
+        recorder.draw_text(
+            text_blob.clone(),
+            Point {
+                x: x + w * 0.5 - tw * 0.5 + iw * 0.25,
+                y: y + h * 0.7 - 1.0,
+            },
+            Color::from_rgba_u8(0, 0, 0, 160),
+        );
+
+        recorder.draw_text(
+            text_blob,
+            Point {
+                x: x + w * 0.5 - tw * 0.5 + iw * 0.25,
+                y: y + h * 0.7,
+            },
+            Color::white().with_alpha(160.0 / 255.0),
+        );
+    }
+
     fn render(&self) -> Picture {
         let current = time::Instant::now();
 
@@ -810,6 +1010,30 @@ impl NanovgRender {
         y += 45.0;
 
         self.draw_label(&mut recorder, "Login", x, y, 20.0);
+
+        y += 25.0;
+        self.draw_edit_box(&mut recorder, "Email", x, y, 280.0, 28.0);
+
+        y += 35.0;
+        self.draw_edit_box(&mut recorder, "Password", x, y, 280.0, 28.0);
+
+        y += 38.0;
+        self.draw_check_box(&mut recorder, "Remember me", x, y, 28.0);
+        self.draw_button(
+            &mut recorder,
+            "Sign in",
+            x + 138.0,
+            y,
+            140.0,
+            28.0,
+            Color::from_rgba_u8(0, 96, 128, 255),
+            Some("\u{f0a9}"),
+        );
+
+        y += 45.0;
+        self.draw_label(&mut recorder, "Diameter", x, y, 20.0);
+        y += 25.0;
+        self.draw_edit_box_num(&mut recorder, "123.00", "px", x + 180.0, y, 100.0, 28.0);
 
         return recorder.finish_record();
     }
