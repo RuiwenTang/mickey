@@ -461,6 +461,72 @@ impl NanovgRender {
         recorder.draw_oval(&Rect::from_ltrb(rx - ex, ry - ey, rx + ex, ry + ey), &gloss);
     }
 
+    fn draw_paragraph(&self, recorder: &mut PictureRecorder, x: f32, y: f32) {
+        let blob_builder = TextBlobBuilder::new(self.font.clone(), 15.0);
+
+        let blob1 = blob_builder.build("This is longer chunk of text.");
+        let blob2 = blob_builder.build("Would have used lorem ipsum.");
+        let blob3 = blob_builder.build("but she    was busy jumping");
+        let blob4 = blob_builder.build("over the lazy dog with the fox");
+        let blob5 = blob_builder.build("and all the men who came to");
+        let blob6 = blob_builder.build("the aid of the party.🎉");
+
+        let mut y_offset = y;
+        recorder.draw_text(
+            blob1.clone(),
+            Point {
+                x,
+                y: y_offset + blob1.ascent,
+            },
+            Color::white(),
+        );
+        y_offset += blob1.height + blob1.line_gap;
+        recorder.draw_text(
+            blob2.clone(),
+            Point {
+                x,
+                y: y_offset + blob2.ascent,
+            },
+            Color::white(),
+        );
+        y_offset += blob2.height + blob2.line_gap;
+        recorder.draw_text(
+            blob3.clone(),
+            Point {
+                x,
+                y: y_offset + blob3.ascent,
+            },
+            Color::white(),
+        );
+        y_offset += blob3.height + blob3.line_gap;
+        recorder.draw_text(
+            blob4.clone(),
+            Point {
+                x,
+                y: y_offset + blob4.ascent,
+            },
+            Color::white(),
+        );
+        y_offset += blob4.height + blob4.line_gap;
+        recorder.draw_text(
+            blob5.clone(),
+            Point {
+                x,
+                y: y_offset + blob5.ascent,
+            },
+            Color::white(),
+        );
+        y_offset += blob5.height + blob5.line_gap;
+        recorder.draw_text(
+            blob6.clone(),
+            Point {
+                x,
+                y: y_offset + blob6.ascent,
+            },
+            Color::white(),
+        );
+    }
+
     fn draw_color_wheel(
         &self,
         recorder: &mut PictureRecorder,
@@ -1050,6 +1116,8 @@ impl NanovgRender {
             delta,
         );
 
+        self.draw_paragraph(&mut recorder, self.width - 450.0, 180.0);
+
         self.draw_color_wheel(
             &mut recorder,
             self.width - 300.0,
@@ -1103,6 +1171,28 @@ impl NanovgRender {
         y += 25.0;
         self.draw_edit_box_num(&mut recorder, "123.00", "px", x + 180.0, y, 100.0, 28.0);
         self.draw_slider(&mut recorder, 0.4, x, y, 170.0, 28.0);
+
+        y += 55.0;
+        self.draw_button(
+            &mut recorder,
+            "Delete",
+            x,
+            y,
+            160.0,
+            28.0,
+            Color::from_rgba_u8(128, 16, 8, 255),
+            Some("\u{fafb}"),
+        );
+        self.draw_button(
+            &mut recorder,
+            "Cancel",
+            x + 170.0,
+            y,
+            110.0,
+            28.0,
+            Color::transparent(),
+            None,
+        );
 
         return recorder.finish_record();
     }
