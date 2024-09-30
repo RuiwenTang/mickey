@@ -956,6 +956,74 @@ impl NanovgRender {
         );
     }
 
+    fn draw_slider(
+        &self,
+        recorder: &mut PictureRecorder,
+        pos: f32,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        let cy = y + (h * 0.5).floor();
+        let kr = (h * 0.25).floor();
+
+        let mut paint = Paint::new();
+        paint.color = Color::from_rgba_u8(0, 0, 0, 64).into();
+
+        let rrect = RRect::from_rect_xy(Rect::from_xywh(x, cy - 2.0, w, 4.0), 2.0, 2.0);
+        recorder.draw_rrect(&rrect, &paint);
+
+        // Knob Shadow
+        paint.color = RadialGradient::new(
+            Point {
+                x: x + pos * w,
+                y: cy + 1.0,
+            },
+            kr + 3.0,
+        )
+        .with_colors(vec![
+            Color::from_rgba_u8(0, 0, 0, 64),
+            Color::from_rgba_u8(0, 0, 0, 0),
+        ])
+        .into();
+        {
+            let path = Path::new()
+                .add_rect(&Rect::from_xywh(
+                    x + pos * w - kr - 5.0,
+                    cy - kr - 5.0,
+                    kr * 2.0 + 5.0 + 5.0,
+                    kr * 2.0 + 5.0 + 5.0 + 3.0,
+                ))
+                .add_circle_dir(x + pos * w, cy, kr, PathDirection::CounterClockwise);
+
+            recorder.draw_path(path, &paint);
+        }
+
+        // knob
+        {
+            let knob = Path::new().add_circle(x + pos * w, cy, kr - 1.0);
+            paint.color = Color::from_rgba_u8(40, 43, 48, 255).into();
+
+            recorder.draw_path(knob.clone(), &paint);
+
+            paint.color = LinearGradient::new(Point { x, y: cy - kr }, Point { x, y: cy + kr })
+                .with_colors(vec![
+                    Color::from_rgba_u8(255, 255, 255, 16),
+                    Color::from_rgba_u8(0, 0, 0, 16),
+                ])
+                .into();
+
+            recorder.draw_path(knob.clone(), &paint);
+        }
+
+        paint.color = Color::from_rgba_u8(0, 0, 0, 92).into();
+        paint.style = Stroke::new().with_width(1.0).into();
+
+        let circle = Path::new().add_circle(x + pos * w, cy, kr - 0.5);
+        recorder.draw_path(circle, &paint);
+    }
+
     fn render(&self) -> Picture {
         let current = time::Instant::now();
 
@@ -1034,6 +1102,7 @@ impl NanovgRender {
         self.draw_label(&mut recorder, "Diameter", x, y, 20.0);
         y += 25.0;
         self.draw_edit_box_num(&mut recorder, "123.00", "px", x + 180.0, y, 100.0, 28.0);
+        self.draw_slider(&mut recorder, 0.4, x, y, 170.0, 28.0);
 
         return recorder.finish_record();
     }

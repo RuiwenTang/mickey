@@ -426,6 +426,41 @@ impl Path {
         self.add_rrect_dir(rrect, Default::default())
     }
 
+    /// Adds circle centered at (cx, cy) with radius to Path.
+    /// Appending PathVerb::Move, four PathVerb::ConicTo and PathVerb::Close.
+    /// Circle begins at: (x + radius, y), continuing clockwise if [dir] is PathDirection::Clockwise.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` the x coordinate of the center of the circle
+    /// * `cy` the y coordinate of the center of the circle
+    /// * `radius` the radius of the circle
+    /// * `dir` the direction to wind the circle
+    pub fn add_circle_dir(self, cx: f32, cy: f32, radius: f32, dir: PathDirection) -> Self {
+        if radius <= 0.0 {
+            self
+        } else {
+            self.add_oval_dir_start(
+                &Rect::from_ltrb(cx - radius, cy - radius, cx + radius, cy + radius),
+                dir,
+                1,
+            )
+        }
+    }
+
+    /// Adds circle centered at (cx, cy) with radius to Path.
+    /// Appending PathVerb::Move, four PathVerb::ConicTo and PathVerb::Close.
+    /// Circle begins at: (x + radius, y), continuing clockwise.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` the x coordinate of the center of the circle
+    /// * `cy` the y coordinate of the center of the circle
+    /// * `radius` the radius of the circle
+    pub fn add_circle(self, cx: f32, cy: f32, radius: f32) -> Self {
+        self.add_circle_dir(cx, cy, radius, Default::default())
+    }
+
     /// Appends PathVerb::Close to Path.
     /// A closed contour connects the first and last Point with line, forming a continuous loop.
     pub fn close(mut self) -> Self {
