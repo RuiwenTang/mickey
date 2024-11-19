@@ -31,6 +31,7 @@ pub(crate) fn init_test_context() -> (wgpu::Device, wgpu::Queue) {
             label: Some("test device"),
             required_features: wgpu::Features::empty(),
             required_limits: wgpu::Limits::default(),
+            memory_hints: wgpu::MemoryHints::default(),
         },
         None,
     ))

@@ -248,9 +248,7 @@ impl Renderer for TextBlobRender {
 
                 let region = region.unwrap();
 
-                if drawable.is_none()
-                    || drawable.as_ref().unwrap().texture.global_id() != region.texture.global_id()
-                {
+                if drawable.is_none() || drawable.as_ref().unwrap().texture != region.texture {
                     if drawable.is_some() {
                         self.drawables.push(drawable.take().unwrap());
                     }
