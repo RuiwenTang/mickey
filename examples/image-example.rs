@@ -1,6 +1,6 @@
 use std::{io::Cursor, rc::Rc};
 
-use image::ImageReader;
+use image::io::Reader as ImageReader;
 use mickey::*;
 
 mod common;
