@@ -1,8 +1,11 @@
+use crate::Color;
+
 /// Surface wrap a wgpu::Texture as a render target.
 /// This is a one-time operation, after flush the surface is no longer usable.
 /// No need to present the surface after flush.
 pub struct Surface<'a> {
     texture: &'a wgpu::Texture,
+    color: Color,
 }
 
 impl<'a> Surface<'a> {
@@ -12,7 +15,21 @@ impl<'a> Surface<'a> {
     ///
     /// * `texture` - The wgpu::Texture to wrap as a render target.
     pub fn new(texture: &'a wgpu::Texture) -> Self {
-        Surface { texture }
+        Surface {
+            texture,
+            color: Color::transparent(),
+        }
+    }
+
+    /// Set the clear color of the surface.
+    /// The default clear color is transparent.
+    ///
+    /// # Arguments
+    ///
+    /// * `color` - The clear color of the surface.
+    pub fn with_clear_color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
     }
 
     /// Flush the content of the surface to the target wgpu::Texture.
@@ -58,12 +75,7 @@ impl<'a> Surface<'a> {
                     view: &msaa_view,
                     resolve_target: Some(&resolve_view),
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 1.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(self.color.into()),
                         store: wgpu::StoreOp::Discard,
                     },
                 })],

@@ -1,7 +1,7 @@
 mod common;
 use common::App;
 
-use mickey::Surface as MCSurface;
+use mickey::{Color, Surface as MCSurface};
 
 struct HelloSurface {}
 
@@ -28,7 +28,7 @@ impl common::Renderer for HelloSurface {
     ) -> bool {
         let surface = MCSurface::new(texture);
 
-        surface.flush(device, queue);
+        surface.with_clear_color(Color::cyan()).flush(device, queue);
         return false;
     }
 }
