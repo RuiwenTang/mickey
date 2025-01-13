@@ -13,7 +13,7 @@ struct Vertex {
 
 struct Pipeline {
     groups: Vec<wgpu::BindGroupLayout>,
-    layout: wgpu::PipelineLayout,
+    _layout: wgpu::PipelineLayout,
     pipeline: wgpu::RenderPipeline,
 }
 
@@ -57,9 +57,10 @@ impl HelloTriangle {
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&layout),
+            cache: None,
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs_main",
+                entry_point: Some("vs_main"),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
@@ -76,15 +77,17 @@ impl HelloTriangle {
                         },
                     ],
                 }],
+                compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: "fs_main",
+                entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
+                compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -106,7 +109,7 @@ impl HelloTriangle {
 
         return Pipeline {
             groups: groups,
-            layout,
+            _layout: layout,
             pipeline,
         };
     }
@@ -216,22 +219,28 @@ impl HelloTriangle {
 }
 
 impl common::Renderer for HelloTriangle {
-    fn on_init(&mut self, format: wgpu::TextureFormat, device: &wgpu::Device, queue: &wgpu::Queue) {
+    fn on_init(
+        &mut self,
+        format: wgpu::TextureFormat,
+        device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+    ) {
         self.pipeline = Some(self.create_pipeline(format, device));
     }
 
-    fn on_render(&mut self, surface: &wgpu::Surface, device: &wgpu::Device, queue: &wgpu::Queue) {
+    fn on_render(
+        &mut self,
+        texture: &wgpu::Texture,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> bool {
         let (buffer, matrix_offset) = self.create_buffer(device, queue);
         let groups = self.create_bind_group(matrix_offset, &buffer, device);
 
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-        let texture = surface.get_current_texture().unwrap();
-
-        let view = texture
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -265,12 +274,10 @@ impl common::Renderer for HelloTriangle {
 
         queue.submit(vec![encoder.finish()]);
 
-        texture.present();
+        return false;
     }
 }
 
 fn main() {
-    let app = App::new("Hello World", 800, 800);
-
-    app.run(HelloTriangle::new());
+    App::run("Hello world", 800, 800, HelloTriangle::new());
 }
