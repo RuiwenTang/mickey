@@ -1,3 +1,5 @@
+use std::ops::RangeBounds;
+
 use wgpu::util::DeviceExt;
 
 /// The stage buffer. Which used to store the data of the vertex buffer and index buffer and uniform buffer.
@@ -9,9 +11,21 @@ pub(crate) struct StageBuffer {
     alignment: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct StageBufferView {
-    offset: usize,
-    size: usize,
+    pub(crate) offset: u64,
+    pub(crate) end: u64,
+    pub(crate) size: u64,
+}
+
+impl RangeBounds<wgpu::BufferAddress> for StageBufferView {
+    fn start_bound(&self) -> std::ops::Bound<&wgpu::BufferAddress> {
+        std::ops::Bound::Included(&self.offset)
+    }
+
+    fn end_bound(&self) -> std::ops::Bound<&wgpu::BufferAddress> {
+        std::ops::Bound::Excluded(&self.end)
+    }
 }
 
 impl StageBuffer {
@@ -28,7 +42,11 @@ impl StageBuffer {
 
         self.buffer.extend_from_slice(bytemuck::cast_slice(data));
 
-        StageBufferView { offset, size }
+        StageBufferView {
+            offset: offset as u64,
+            end: (offset + size) as u64,
+            size: size as u64,
+        }
     }
 
     pub fn push_align<T: bytemuck::Pod>(&mut self, data: &[T]) -> StageBufferView {
@@ -44,7 +62,11 @@ impl StageBuffer {
 
         self.buffer.extend_from_slice(bytemuck::cast_slice(data));
 
-        StageBufferView { offset, size }
+        StageBufferView {
+            offset: offset as u64,
+            end: (offset + size) as u64,
+            size: size as u64,
+        }
     }
 
     pub fn gen_buffer(self, device: &wgpu::Device, queue: &wgpu::Queue) -> Option<wgpu::Buffer> {

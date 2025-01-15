@@ -1,5 +1,7 @@
 mod buffer;
+mod command;
 mod context;
 
-pub use buffer::*;
+pub(crate) use buffer::*;
+pub(crate) use command::*;
 pub use context::*;
