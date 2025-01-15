@@ -1,16 +1,22 @@
 mod common;
 
+use std::rc::Rc;
+
 use common::App;
 
-use mickey::{Color, Paint, Picture, PictureRecorder, Rect, Surface};
+use mickey::{Color, Paint, Picture, PictureRecorder, Rect, RenderContext, Surface};
 
 struct HelloSurface {
+    context: Rc<RenderContext>,
     picture: Option<Picture>,
 }
 
 impl HelloSurface {
     fn new() -> Self {
-        HelloSurface { picture: None }
+        HelloSurface {
+            context: Rc::new(RenderContext::new()),
+            picture: None,
+        }
     }
 }
 
@@ -46,7 +52,7 @@ impl common::Renderer for HelloSurface {
         surface
             .with_clear_color(Color::cyan())
             .replay(self.picture.as_ref().expect("picture not init"))
-            .flush(device, queue);
+            .flush(self.context.clone(), device, queue);
         return false;
     }
 }

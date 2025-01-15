@@ -33,12 +33,12 @@ impl State {
         self.transform.scale(x, y);
     }
 
-    pub(crate) fn rotate<T: Angle>(&mut self, value: f32) {
-        self.transform.rotate::<T>(value);
+    pub(crate) fn rotate<T: Angle>(&mut self, value: T) {
+        self.transform.rotate(value);
     }
 
-    pub(crate) fn rotate_at<T: Angle>(&mut self, point: Point, value: f32) {
-        self.transform.rotate_at::<T>(point, value);
+    pub(crate) fn rotate_at<T: Angle>(&mut self, point: Point, value: T) {
+        self.transform.rotate_at(point, value);
     }
 }
 
@@ -151,12 +151,21 @@ impl PictureRecorder {
     /// Rotate the current matrix. By angle.
     ///
     /// # Arguments
-    /// * `value` - The angle to rotate.
-    pub fn rotate<T: Angle>(&mut self, value: f32) {
+    /// * `value` - The angle to rotate. Pass raw f32 value means degree.
+    ///
+    /// # Example
+    /// ```
+    /// use mickey::*;
+    /// let mut recorder = PictureRecorder::new();
+    /// recorder.rotate(45.0); // rotate in 45 degree
+    /// recorder.rotate(Radian(0.3)); // rotate in radians
+    /// recorder.rotate(Degree(45.0)); // rotate in degree
+    /// ```
+    pub fn rotate<T: Angle>(&mut self, value: T) {
         self.state
             .last_mut()
             .expect("The state stack is empty")
-            .rotate::<T>(value);
+            .rotate(value);
     }
 
     /// Rotate the current matrix at the given point. By angle.
@@ -164,11 +173,11 @@ impl PictureRecorder {
     /// # Arguments
     /// * `point` - The point to rotate at.
     /// * `value` - The angle to rotate.
-    pub fn rotate_at<T: Angle>(&mut self, point: Point, value: f32) {
+    pub fn rotate_at<T: Angle>(&mut self, point: Point, value: T) {
         self.state
             .last_mut()
             .expect("The state stack is empty")
-            .rotate_at::<T>(point, value);
+            .rotate_at(point, value);
     }
 
     /// Finish the recording and return the picture.

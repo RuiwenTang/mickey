@@ -1,4 +1,6 @@
-use crate::{Color, Draw, Picture};
+use std::rc::Rc;
+
+use crate::{Color, Draw, Picture, RenderContext, StageBuffer};
 
 /// Surface wrap a wgpu::Texture as a render target.
 /// This is a one-time operation, after flush the surface is no longer usable.
@@ -40,7 +42,9 @@ impl<'a> Surface<'a> {
     }
 
     /// Flush the content of the surface to the target wgpu::Texture.
-    pub fn flush(self, device: &wgpu::Device, queue: &wgpu::Queue) {
+    pub fn flush(self, _context: Rc<RenderContext>, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let buffer = StageBuffer::new(device);
+
         // create a msaa texture and a command encoder
         let msaa = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("MSAA Attachment"),
@@ -90,6 +94,8 @@ impl<'a> Surface<'a> {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
+
+            let _buffer = buffer.gen_buffer(device, queue);
         }
 
         queue.submit(Some(encoder.finish()));

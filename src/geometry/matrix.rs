@@ -2,7 +2,7 @@ use std::ops::Mul;
 
 use nalgebra::{Matrix3, Vector2, Vector3};
 
-use super::{Angle, Point};
+use crate::{Angle, Point};
 
 /// A 3x3 matrix.
 /// The matrix is represented by a 3x3 array of floating-point values.
@@ -123,14 +123,14 @@ impl Matrix3x3 {
     ///
     /// # Returns
     /// A new matrix that is the result of rotating the original matrix by the given value.
-    pub fn rotate<T: Angle>(self, value: f32) -> Self {
+    pub fn rotate<T: Angle>(self, value: T) -> Self {
         Matrix3x3 {
-            m: self.m * Matrix3::new_rotation(T::to_radians(value)),
+            m: self.m * Matrix3::new_rotation(value.radians()),
         }
     }
 
-    pub fn rotate_at<T: Angle>(self, point: Point, value: f32) -> Self {
-        let m = Matrix3::new_rotation(T::to_radians(T::to_radians(value)));
+    pub fn rotate_at<T: Angle>(self, point: Point, value: T) -> Self {
+        let m = Matrix3::new_rotation(value.radians());
         let pre = Vector2::new(-point.x, -point.y);
         let post = Vector2::new(point.x, point.y);
         let m = Matrix3::new_translation(&post) * m * Matrix3::new_translation(&pre);

@@ -10,21 +10,27 @@ pub use path::*;
 pub use point::*;
 pub use rect::*;
 
-pub struct Degrees;
-pub struct Radians;
+pub struct Degree(pub f32);
+pub struct Radian(pub f32);
 
 pub trait Angle {
-    fn to_radians(value: f32) -> f32;
+    fn radians(self) -> f32;
 }
 
-impl Angle for Degrees {
-    fn to_radians(value: f32) -> f32 {
-        value * PI / 180.0
+impl Angle for Degree {
+    fn radians(self) -> f32 {
+        self.0 * PI / 180.0
     }
 }
 
-impl Angle for Radians {
-    fn to_radians(value: f32) -> f32 {
-        value
+impl Angle for Radian {
+    fn radians(self) -> f32 {
+        self.0
+    }
+}
+
+impl Angle for f32 {
+    fn radians(self) -> f32 {
+        self * PI / 180.0
     }
 }
