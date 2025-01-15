@@ -1,0 +1,194 @@
+use super::Point;
+
+/// A PathVerb describes the type of one or more points in a path.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PathVerb {
+    /// MoveTo indicates the first point of a new subpath.
+    MoveTo(Point),
+    /// LineTo indicates a line from the current point to the new point.
+    /// The new point becomes the current point.
+    LineTo(Point),
+    /// QuadTo indicates a quadratic Bézier curve from the current point to the new point.
+    /// The new point becomes the current point.
+    /// The first point is the Bézier control point.
+    /// The second point is the end point of the Bézier curve.
+    QuadTo(Point, Point),
+    /// CubicTo indicates a cubic Bézier curve from the current point to the new point.
+    /// The new point becomes the current point.
+    /// The first point is the Bézier control point 1.
+    /// The second point is the Bézier control point 2.
+    /// The third point is the end point of the Bézier curve.
+    CubicTo(Point, Point, Point),
+    /// ConicTo indicates a conic Bézier curve from the current point to the new point.
+    /// The new point becomes the current point.
+    /// The first point is the Bézier control point.
+    /// The second point is the end point of the Bézier curve.
+    /// The third value is the weight of the curve.
+    ConicTo(Point, Point, f32),
+    /// ClosePath indicates a line from the current point to the first point of the current subpath.
+    /// The current point becomes the first point of the current subpath.
+    /// This is a path verb that can be used to close a subpath.
+    /// It does not have a coordinate argument.
+    ///
+    /// # Note
+    /// When doing stroke for the path.
+    /// The ClosePath verb make the last Line joins the first point of the subpath.
+    /// Otherwise, the last point and the first point will do Stroke Cap.
+    ClosePath,
+}
+
+/// The FillRule describes how the area to fill in the path. Based on the winding number.
+/// The winding number defination is https://en.wikipedia.org/wiki/Winding_number
+///
+/// The default value is FillRule::Winning.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FillRule {
+    #[default]
+    Winning,
+    EvenOdd,
+}
+
+/// Path describes a 2D geometry shape composed of lines or curves.
+/// It can be empty or contain one or more sub-paths.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Path {
+    verbs: Vec<PathVerb>,
+    fill_rule: FillRule,
+    last_move_to_index: Option<usize>,
+}
+
+impl Path {
+    /// Create a new empty path.
+    pub fn new() -> Path {
+        Path {
+            verbs: vec![],
+            fill_rule: FillRule::Winning,
+            last_move_to_index: None,
+        }
+    }
+
+    /// Set the fill rule.
+    ///
+    /// # Arguments
+    /// * `fill_rule` - The fill rule.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn with_fill_rule(mut self, fill_rule: FillRule) -> Self {
+        self.fill_rule = fill_rule;
+        self
+    }
+
+    /// Get the fill rule.
+    ///
+    /// # Returns
+    /// The fill rule.
+    pub fn fill_rule(&self) -> FillRule {
+        self.fill_rule
+    }
+
+    /// Move the current point to the specified point.
+    /// The new point becomes the current point.
+    /// It also starts a new subpath.
+    ///
+    /// # Arguments
+    /// * `point` - The new point.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn move_to(mut self, point: Point) -> Self {
+        self.verbs.push(PathVerb::MoveTo(point));
+        self.last_move_to_index = Some(self.verbs.len() - 1);
+        self
+    }
+
+    /// Add a line from the current point to the specified point.
+    /// The new point becomes the current point.
+    /// If no previous MoveTo verb has been called, will insert a MoveTo verb from (0.0, 0.0).
+    ///
+    /// # Arguments
+    /// * `point` - The new point.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn line_to(mut self, point: Point) -> Self {
+        self.inject_move_to_if_needed();
+
+        self.verbs.push(PathVerb::LineTo(point));
+        self
+    }
+
+    /// Add a quadratic Bézier curve from the current point to the specified point.
+    /// The new point becomes the current point.
+    /// If no previous MoveTo verb has been called, will insert a MoveTo verb from (0.0, 0.0).
+    ///
+    /// # Arguments
+    /// * `control_point` - The Bézier control point.
+    /// * `end_point` - The end point of the Bézier curve.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn quad_to(mut self, control_point: Point, end_point: Point) -> Self {
+        self.inject_move_to_if_needed();
+
+        self.verbs.push(PathVerb::QuadTo(control_point, end_point));
+        self
+    }
+
+    /// Add a cubic Bézier curve from the current point to the specified point.
+    /// The new point becomes the current point.
+    /// If no previous MoveTo verb has been called, will insert a MoveTo verb from (0.0, 0.0).
+    ///
+    /// # Arguments
+    /// * `point_1` - The Bézier control point 1.
+    /// * `point_2` - The Bézier control point 2.
+    /// * `end_point` - The end point of the Bézier curve.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn cubic_to(mut self, point_1: Point, point_2: Point, end_point: Point) -> Self {
+        self.inject_move_to_if_needed();
+        self.verbs
+            .push(PathVerb::CubicTo(point_1, point_2, end_point));
+        self
+    }
+
+    /// Add a conic Bézier curve from the current point to the specified point.
+    /// The new point becomes the current point.
+    /// If no previous MoveTo verb has been called, will insert a MoveTo verb from (0.0, 0.0).
+    ///
+    /// # Arguments
+    /// * `control_point` - The Bézier control point.
+    /// * `end_point` - The end point of the Bézier curve.
+    /// * `weight` - The weight of the curve.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn conic_to(mut self, control_point: Point, end_point: Point, weight: f32) -> Self {
+        self.inject_move_to_if_needed();
+
+        self.verbs
+            .push(PathVerb::ConicTo(control_point, end_point, weight));
+        self
+    }
+
+    /// Add a ClosePath verb to the path.
+    /// If no previous MoveTo verb has been called, nothing will be added.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn close_path(mut self) -> Self {
+        if self.last_move_to_index.is_some() {
+            self.verbs.push(PathVerb::ClosePath);
+        }
+
+        self
+    }
+
+    fn inject_move_to_if_needed(&mut self) {
+        if self.last_move_to_index.is_none() {
+            self.verbs.push(PathVerb::MoveTo(Point::new(0.0, 0.0)));
+            self.last_move_to_index = Some(self.verbs.len() - 1);
+        }
+    }
+}

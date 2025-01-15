@@ -1,10 +1,14 @@
 mod matrix;
+mod path;
 mod point;
+mod rect;
 
 use std::f32::consts::PI;
 
 pub use matrix::*;
+pub use path::*;
 pub use point::*;
+pub use rect::*;
 
 pub struct Degrees;
 pub struct Radians;

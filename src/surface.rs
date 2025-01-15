@@ -1,4 +1,4 @@
-use crate::Color;
+use crate::{Color, Draw, Picture};
 
 /// Surface wrap a wgpu::Texture as a render target.
 /// This is a one-time operation, after flush the surface is no longer usable.
@@ -6,6 +6,7 @@ use crate::Color;
 pub struct Surface<'a> {
     texture: &'a wgpu::Texture,
     color: Color,
+    cmds: Vec<Draw>,
 }
 
 impl<'a> Surface<'a> {
@@ -18,6 +19,7 @@ impl<'a> Surface<'a> {
         Surface {
             texture,
             color: Color::transparent(),
+            cmds: Vec::new(),
         }
     }
 
@@ -29,6 +31,11 @@ impl<'a> Surface<'a> {
     /// * `color` - The clear color of the surface.
     pub fn with_clear_color(mut self, color: Color) -> Self {
         self.color = color;
+        self
+    }
+
+    pub fn replay(mut self, picture: &Picture) -> Self {
+        self.cmds.extend_from_slice(picture.draws.as_slice());
         self
     }
 

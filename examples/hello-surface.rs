@@ -1,13 +1,16 @@
 mod common;
+
 use common::App;
 
-use mickey::{Color, Surface as MCSurface};
+use mickey::{Color, Paint, Picture, PictureRecorder, Rect, Surface};
 
-struct HelloSurface {}
+struct HelloSurface {
+    picture: Option<Picture>,
+}
 
 impl HelloSurface {
     fn new() -> Self {
-        HelloSurface {}
+        HelloSurface { picture: None }
     }
 }
 
@@ -18,6 +21,18 @@ impl common::Renderer for HelloSurface {
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
     ) {
+        let mut recorder = PictureRecorder::new();
+
+        let mut paint = Paint::default().with_color(Color::red());
+        let rect = Rect::new_xywh(100.0, 100.0, 100.0, 100.0);
+
+        recorder.draw_rect(rect, paint);
+
+        paint.set_color(Color::blue());
+
+        recorder.draw_rect(rect.offset(0.0, 200.0), paint);
+
+        self.picture = Some(recorder.finish_recorder());
     }
 
     fn on_render(
@@ -26,9 +41,12 @@ impl common::Renderer for HelloSurface {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> bool {
-        let surface = MCSurface::new(texture);
+        let surface = Surface::new(texture);
 
-        surface.with_clear_color(Color::cyan()).flush(device, queue);
+        surface
+            .with_clear_color(Color::cyan())
+            .replay(self.picture.as_ref().expect("picture not init"))
+            .flush(device, queue);
         return false;
     }
 }
