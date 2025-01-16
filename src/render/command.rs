@@ -67,7 +67,8 @@ impl Group {
     }
 }
 
-pub(crate) struct Comand {
+#[derive(Debug, Clone)]
+pub(crate) struct Command {
     pub(crate) pipeline: Rc<wgpu::RenderPipeline>,
     pub(crate) vertex_buffer: StageBufferView,
     pub(crate) index_buffer: StageBufferView,
@@ -75,7 +76,7 @@ pub(crate) struct Comand {
     pub(crate) draw_count: u32,
 }
 
-impl Comand {
+impl Command {
     pub(crate) fn draw(
         &self,
         pass: &mut wgpu::RenderPass,

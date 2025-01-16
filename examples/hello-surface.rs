@@ -7,14 +7,14 @@ use common::App;
 use mickey::{Color, Paint, Picture, PictureRecorder, Rect, RenderContext, Surface};
 
 struct HelloSurface {
-    context: Rc<RenderContext>,
+    context: RenderContext,
     picture: Option<Picture>,
 }
 
 impl HelloSurface {
     fn new() -> Self {
         HelloSurface {
-            context: Rc::new(RenderContext::new()),
+            context: RenderContext::new(),
             picture: None,
         }
     }
@@ -52,7 +52,7 @@ impl common::Renderer for HelloSurface {
         surface
             .with_clear_color(Color::cyan())
             .replay(self.picture.as_ref().expect("picture not init"))
-            .flush(self.context.clone(), device, queue);
+            .flush(&mut self.context, device, queue);
         return false;
     }
 }
