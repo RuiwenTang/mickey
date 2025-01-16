@@ -2,7 +2,7 @@ mod color_geometry;
 
 pub(crate) use color_geometry::*;
 
-use crate::{Group, RasterResult, StageBuffer};
+use crate::{Group, StageBuffer};
 
 /// The geometry handled the shape raster.
 /// Also provide the vertex buffer layout information.

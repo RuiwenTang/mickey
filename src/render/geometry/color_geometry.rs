@@ -1,4 +1,4 @@
-use crate::{Geometry, Group, PositionChunk, Raster, RasterResult, ShaderGenerator, StageBuffer};
+use crate::{Geometry, Group, PositionChunk, ShaderGenerator, StageBuffer};
 
 pub(crate) struct ColorGeometry {
     pos: PositionChunk,

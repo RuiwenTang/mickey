@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use nalgebra::Matrix4;
 
 use crate::{

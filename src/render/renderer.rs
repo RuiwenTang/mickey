@@ -19,7 +19,7 @@ fn mvp_to_buffer(mvp: &Matrix4<f32>) -> [f32; 16] {
 
 pub(crate) fn create_render_direct(draw: &Draw, mvp: &Matrix4<f32>) -> Box<dyn Renderer> {
     match draw {
-        Draw::DrawRect(rect, paint, transform) => {
+        Draw::DrawRect(_, paint, transform) => {
             let geometry = ColorGeometry::new(PositionChunk::new(
                 mvp_to_buffer(mvp),
                 transform.clone().into(),
@@ -92,9 +92,6 @@ impl<G: Geometry + ShaderGenerator, F: Fragment + ShaderGenerator> Renderer for 
                 self.geometry.shader_name(),
                 self.fragment.shader_name()
             ),
-            format,
-            sample_count,
-            ds: self.fragment.depth_stencil_state(),
             attributes,
             attr_stride,
             vs_generator: &self.geometry,
@@ -114,6 +111,7 @@ impl<G: Geometry + ShaderGenerator, F: Fragment + ShaderGenerator> Renderer for 
             format,
             sample_count,
             ds: self.fragment.depth_stencil_state(),
+            blend: self.fragment.blend_state(),
         };
         let render_pipeline = pipeline
             .borrow_mut()

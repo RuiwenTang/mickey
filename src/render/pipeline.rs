@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::DerefMut, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 /// The pipeline key. Which used to identify the pipeline.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -7,6 +7,7 @@ pub(crate) struct PipelineKey {
     pub(crate) format: wgpu::TextureFormat,
     pub(crate) sample_count: u32,
     pub(crate) ds: wgpu::DepthStencilState,
+    pub(crate) blend: Option<wgpu::BlendState>,
 }
 
 impl PipelineKey {
@@ -24,8 +25,12 @@ impl PipelineKey {
 
         let attachments = [Some(wgpu::ColorTargetState {
             format: self.format,
-            blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-            write_mask: wgpu::ColorWrites::ALL,
+            blend: self.blend,
+            write_mask: if self.blend.is_some() {
+                wgpu::ColorWrites::ALL
+            } else {
+                wgpu::ColorWrites::empty()
+            },
         })];
 
         let desc = wgpu::RenderPipelineDescriptor {

@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::{Color, DepthStencilStateProvider, Fragment, Group, ShaderGenerator, Uniform};
 
 pub(crate) struct ColorFragment<DS: DepthStencilStateProvider> {
@@ -21,11 +19,8 @@ impl<DS: DepthStencilStateProvider> Fragment for ColorFragment<DS> {
         DS::stencil_state()
     }
 
-    fn blend_state(&self) -> (wgpu::BlendState, wgpu::ColorWrites) {
-        (
-            wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-            wgpu::ColorWrites::ALL,
-        )
+    fn blend_state(&self) -> Option<wgpu::BlendState> {
+        Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING)
     }
 
     fn get_group_entry(&self) -> Vec<wgpu::BindGroupLayoutEntry> {

@@ -1,6 +1,6 @@
 use std::ops::Mul;
 
-use nalgebra::{Matrix3, Matrix4, Vector2, Vector3};
+use nalgebra::{Matrix3, Vector2, Vector3};
 
 use crate::{Angle, Point};
 
@@ -180,29 +180,29 @@ impl Mul<Point> for Matrix3x3 {
 
 impl Into<[f32; 16]> for Matrix3x3 {
     fn into(self) -> [f32; 16] {
-        // extends 3x3 matrix to 4x4 matrix
-        // [m00, m01, 0.0, m02,
-        //  m10, m11, 0.0, m12,
+        // extends 3x3 matrix to 4x4 matrix with column major
+        // [m00, m10, 0.0, m20,
+        //  m01, m11, 0.0, m21,
         //  0.0, 0.0, 1.0, 0.0,
-        //  m20, m21, 0.0, m22]
+        //  m02, m12, 0.0, m22]
 
         [
-            self.m00(),
-            self.m01(),
+            self.m[(0, 0)],
+            self.m[(1, 0)],
             0.0,
-            self.m02(),
-            self.m10(),
-            self.m11(),
+            self.m[(2, 0)],
+            self.m[(0, 1)],
+            self.m[(1, 1)],
             0.0,
-            self.m12(),
+            self.m[(2, 1)],
             0.0,
             0.0,
             1.0,
             0.0,
-            self.m20(),
-            self.m21(),
+            self.m[(0, 2)],
+            self.m[(1, 2)],
             0.0,
-            self.m22(),
+            self.m[(2, 2)],
         ]
     }
 }

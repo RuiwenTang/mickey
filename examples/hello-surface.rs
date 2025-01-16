@@ -1,7 +1,5 @@
 mod common;
 
-use std::rc::Rc;
-
 use common::App;
 
 use mickey::{Color, Paint, Picture, PictureRecorder, Rect, RenderContext, Surface};
@@ -36,7 +34,11 @@ impl common::Renderer for HelloSurface {
 
         paint.set_color(Color::blue());
 
-        recorder.draw_rect(rect.offset(0.0, 200.0), paint);
+        let rect = rect.offset(0.0, 200.0);
+
+        recorder.rotate_at(rect.center(), 45.0);
+
+        recorder.draw_rect(rect, paint);
 
         self.picture = Some(recorder.finish_recorder());
     }

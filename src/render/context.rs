@@ -27,9 +27,6 @@ pub struct RenderContext {
 
 pub(crate) struct PipelineQuery<'a> {
     pub(crate) label: String,
-    pub(crate) format: wgpu::TextureFormat,
-    pub(crate) sample_count: u32,
-    pub(crate) ds: wgpu::DepthStencilState,
     pub(crate) attributes: Vec<wgpu::VertexAttribute>,
     pub(crate) attr_stride: wgpu::BufferAddress,
 

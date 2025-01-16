@@ -26,19 +26,19 @@ impl Default for State {
 
 impl State {
     pub(crate) fn translate(&mut self, x: f32, y: f32) {
-        self.transform.translate(x, y);
+        self.transform = self.transform.translate(x, y);
     }
 
     pub(crate) fn scale(&mut self, x: f32, y: f32) {
-        self.transform.scale(x, y);
+        self.transform = self.transform.scale(x, y);
     }
 
     pub(crate) fn rotate<T: Angle>(&mut self, value: T) {
-        self.transform.rotate(value);
+        self.transform = self.transform.rotate(value);
     }
 
     pub(crate) fn rotate_at<T: Angle>(&mut self, point: Point, value: T) {
-        self.transform.rotate_at(point, value);
+        self.transform = self.transform.rotate_at(point, value);
     }
 }
 

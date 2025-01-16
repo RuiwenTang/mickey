@@ -29,7 +29,7 @@ impl PositionChunk {
             @group(0) @binding(0) var<uniform> user_transform: UserTramsform;
 
             fn calculate_position(pos: vec2<f32>) -> vec4<f32> {
-                var p: vec4<f32> = user_transform.mvp *  vec4<f32>(pos, 0.0, 1.0);
+                var p: vec4<f32> = user_transform.mvp * user_transform.transform * vec4<f32>(pos, 0.0, 1.0);
 
                 return vec4<f32>(
                     p.x / p.w,

@@ -8,7 +8,7 @@ pub(crate) trait Fragment {
     /// The depth stencil state. When create pipeline.
     fn depth_stencil_state(&self) -> wgpu::DepthStencilState;
     /// The blend state. When create pipeline.
-    fn blend_state(&self) -> (wgpu::BlendState, wgpu::ColorWrites);
+    fn blend_state(&self) -> Option<wgpu::BlendState>;
 
     /// The bind group entry. for create pipeline layout
     /// All fragment shader use group 1.
