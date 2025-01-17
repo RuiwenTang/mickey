@@ -2,6 +2,7 @@ use std::num::NonZero;
 
 use crate::{StageBuffer, Uniform};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct PositionChunk {
     mvp: [f32; 16],
     transform: [f32; 16],

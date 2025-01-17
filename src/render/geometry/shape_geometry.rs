@@ -1,16 +1,16 @@
 use crate::{Geometry, Group, PositionChunk, ShaderGenerator, StageBuffer};
 
-pub(crate) struct ColorGeometry {
+pub(crate) struct ShapeGeometry {
     pos: PositionChunk,
 }
 
-impl ColorGeometry {
+impl ShapeGeometry {
     pub fn new(pos: PositionChunk) -> Self {
-        ColorGeometry { pos }
+        ShapeGeometry { pos }
     }
 }
 
-impl Geometry for ColorGeometry {
+impl Geometry for ShapeGeometry {
     fn get_vertex_attributes(&self) -> (Vec<wgpu::VertexAttribute>, wgpu::BufferAddress) {
         (
             vec![wgpu::VertexAttribute {
@@ -36,7 +36,7 @@ impl Geometry for ColorGeometry {
     }
 }
 
-impl ShaderGenerator for ColorGeometry {
+impl ShaderGenerator for ShapeGeometry {
     fn shader_name(&self) -> String {
         return String::from("SolidColorGeometry");
     }

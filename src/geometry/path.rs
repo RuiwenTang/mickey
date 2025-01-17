@@ -37,6 +37,16 @@ pub enum PathVerb {
     ClosePath,
 }
 
+impl PathVerb {
+    fn is_move_to(&self) -> bool {
+        matches!(self, PathVerb::MoveTo(_))
+    }
+
+    fn is_close_path(&self) -> bool {
+        matches!(self, PathVerb::ClosePath)
+    }
+}
+
 /// The FillRule describes how the area to fill in the path. Based on the winding number.
 /// The winding number defination is https://en.wikipedia.org/wiki/Winding_number
 ///
@@ -97,6 +107,12 @@ impl Path {
     /// # Returns
     /// The path.
     pub fn move_to(mut self, point: Point) -> Self {
+        if self.verbs.last().is_some() && self.verbs.last().unwrap().is_move_to() {
+            // replace the last MoveTo verb
+            self.verbs[self.last_move_to_index.unwrap()] = PathVerb::MoveTo(point);
+            return self;
+        }
+
         self.verbs.push(PathVerb::MoveTo(point));
         self.last_move_to_index = Some(self.verbs.len() - 1);
         self
@@ -178,6 +194,10 @@ impl Path {
     /// # Returns
     /// The path.
     pub fn close_path(mut self) -> Self {
+        if self.verbs.last().is_some() && self.verbs.last().unwrap().is_close_path() {
+            return self;
+        }
+
         if self.last_move_to_index.is_some() {
             self.verbs.push(PathVerb::ClosePath);
         }

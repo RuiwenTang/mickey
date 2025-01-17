@@ -1,6 +1,10 @@
 mod color_fragment;
+mod stencil_fragment;
 
 pub(crate) use color_fragment::*;
+pub(crate) use stencil_fragment::*;
+
+use super::Group;
 
 /// Fragment responsible for generate the color data when rendering a shape.
 /// It also controls the DepthStencilState and BlendState. When create pipeline.
@@ -20,7 +24,7 @@ pub(crate) trait Fragment {
         buffer: &mut crate::render::StageBuffer,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> crate::render::Group;
+    ) -> Option<Group>;
 
     fn stencil_state_name(&self) -> &'static str;
 }
@@ -31,7 +35,20 @@ pub(crate) trait DepthStencilStateProvider {
     fn name() -> &'static str;
 }
 
+/// Indicate no need to do stencil test.
 pub(crate) struct NoneStencil;
+
+/// Indicate to mark stencil value by black and white.
+pub(crate) struct BWStencilMask;
+
+/// Indicate to do stencil test by non-zero.
+pub(crate) struct NonZeroStencil;
+
+/// Indicate to do stencil test by which not use stencil but depth.
+pub(crate) struct StrokeStencil;
+
+/// Indicate to do stencil test by even-odd.
+pub(crate) struct EvenOddStencil;
 
 impl DepthStencilStateProvider for NoneStencil {
     fn stencil_state() -> wgpu::DepthStencilState {
@@ -46,5 +63,114 @@ impl DepthStencilStateProvider for NoneStencil {
 
     fn name() -> &'static str {
         "none_stencil"
+    }
+}
+
+impl DepthStencilStateProvider for BWStencilMask {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Always,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::IncrementWrap,
+                },
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Always,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::DecrementWrap,
+                },
+                read_mask: 0xff,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "bw_stencil_mask"
+    }
+}
+
+impl DepthStencilStateProvider for NonZeroStencil {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                read_mask: 0xff,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "non_zero_stencil"
+    }
+}
+
+impl DepthStencilStateProvider for EvenOddStencil {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                read_mask: 0x01,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "even_odd_stencil"
+    }
+}
+
+impl DepthStencilStateProvider for StrokeStencil {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "stroke_stencil"
     }
 }

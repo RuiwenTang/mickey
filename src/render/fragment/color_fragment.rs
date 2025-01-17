@@ -41,14 +41,14 @@ impl<DS: DepthStencilStateProvider> Fragment for ColorFragment<DS> {
         buffer: &mut crate::render::StageBuffer,
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
-    ) -> Group {
+    ) -> Option<Group> {
         let raw_color: [f32; 4] = self.color.clone().into();
         let view = buffer.push_align(&raw_color);
 
-        Group {
+        Some(Group {
             index: 1,
             bindings: vec![Uniform::Buffer(view, 0)],
-        }
+        })
     }
 
     fn stencil_state_name(&self) -> &'static str {

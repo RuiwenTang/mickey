@@ -1,7 +1,7 @@
-use crate::{Draw, Point, RasterResult, Rect, StageBuffer, Style};
+use crate::{Draw, Matrix3x3, Mesh, MeshType, Point, Rect, StageBuffer, Style};
 
 pub(crate) trait Raster {
-    fn do_raster(&self, buffer: &mut StageBuffer) -> RasterResult;
+    fn do_raster(&self, buffer: &mut StageBuffer) -> Mesh;
 }
 
 /// Create the raster based on the draw.
@@ -29,7 +29,7 @@ struct RectFillRaster {
 }
 
 impl Raster for RectFillRaster {
-    fn do_raster(&self, buffer: &mut StageBuffer) -> RasterResult {
+    fn do_raster(&self, buffer: &mut StageBuffer) -> Mesh {
         let mut vertex: Vec<Point> = vec![];
         let mut index: Vec<u32> = vec![];
 
@@ -53,6 +53,11 @@ impl Raster for RectFillRaster {
         let vertex_view = buffer.push(vertex.as_slice());
         let index_view = buffer.push(index.as_slice());
 
-        RasterResult::Direct(vertex_view, index_view, index.len() as u32)
+        Mesh {
+            vertex_buffer: vertex_view,
+            index_buffer: index_view,
+            draw_count: index.len() as u32,
+            mesh_type: MeshType::Direct,
+        }
     }
 }

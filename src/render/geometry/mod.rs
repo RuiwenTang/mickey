@@ -1,6 +1,6 @@
-mod color_geometry;
+mod shape_geometry;
 
-pub(crate) use color_geometry::*;
+pub(crate) use shape_geometry::*;
 
 use crate::{Group, StageBuffer};
 

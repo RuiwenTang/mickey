@@ -11,6 +11,22 @@ pub(crate) enum Draw {
     DrawRect(Rect, Paint, Matrix3x3),
 }
 
+impl Draw {
+    pub(crate) fn transform(&self) -> Matrix3x3 {
+        match self {
+            Draw::DrawPath(_, _, m) => m.clone(),
+            Draw::DrawRect(_, _, m) => m.clone(),
+        }
+    }
+
+    pub(crate) fn paint(&self) -> Paint {
+        match self {
+            Draw::DrawPath(_, paint, _) => paint.clone(),
+            Draw::DrawRect(_, paint, _) => paint.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct State {
     pub(crate) transform: Matrix3x3,

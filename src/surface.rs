@@ -1,8 +1,18 @@
 use nalgebra::Matrix4;
 
 use crate::{
-    Color, Draw, Picture, RenderContext, StageBuffer, create_raster, create_render_direct,
+    Color, Content, Draw, EvenOddStencil, MeshType, NonZeroStencil, NoneStencil, Picture,
+    PositionChunk, RenderContext, StageBuffer, StrokeStencil, create_raster,
 };
+
+fn mvp_to_buffer(mvp: &Matrix4<f32>) -> [f32; 16] {
+    mvp.as_slice()
+        .iter()
+        .map(|v| *v)
+        .collect::<Vec<f32>>()
+        .try_into()
+        .unwrap()
+}
 
 /// Surface wrap a wgpu::Texture as a render target.
 /// This is a one-time operation, after flush the surface is no longer usable.
@@ -61,19 +71,66 @@ impl<'a> Surface<'a> {
             }
 
             let raster = raster.unwrap();
-            let raster_result = raster.do_raster(&mut buffer);
+            let mesh = raster.do_raster(&mut buffer);
 
-            let render = create_render_direct(&cmd, &mvp);
+            let transform = cmd.transform();
+            let paint = cmd.paint();
 
-            commands.push(render.render(
-                raster_result.raw(),
-                &mut buffer,
-                context,
+            let content = Content::new(
+                paint.color,
                 format,
                 sample_count,
-                device,
-                queue,
-            ));
+                PositionChunk::new(mvp_to_buffer(&mvp), transform.into(), [0.5, 0.0, 0.0, 0.0]),
+            );
+
+            let needs_stencil = match mesh.mesh_type {
+                MeshType::Direct => false,
+                MeshType::Stroke => false,
+                MeshType::EvenOdd => true,
+                MeshType::NonZero => true,
+            };
+
+            if needs_stencil {
+                // draw stencil mask first
+                commands.push(content.render_stencil(mesh, &mut buffer, context, device, queue));
+
+                // draw color with stencil mask
+                if mesh.mesh_type == MeshType::EvenOdd {
+                    commands.push(content.render_color::<EvenOddStencil>(
+                        mesh,
+                        &mut buffer,
+                        context,
+                        device,
+                        queue,
+                    ));
+                } else {
+                    commands.push(content.render_color::<NonZeroStencil>(
+                        mesh,
+                        &mut buffer,
+                        context,
+                        device,
+                        queue,
+                    ));
+                }
+            } else {
+                if mesh.mesh_type == MeshType::Stroke {
+                    commands.push(content.render_color::<StrokeStencil>(
+                        mesh,
+                        &mut buffer,
+                        context,
+                        device,
+                        queue,
+                    ));
+                } else {
+                    commands.push(content.render_color::<NoneStencil>(
+                        mesh,
+                        &mut buffer,
+                        context,
+                        device,
+                        queue,
+                    ));
+                }
+            }
         }
 
         // create a msaa texture and a command encoder
