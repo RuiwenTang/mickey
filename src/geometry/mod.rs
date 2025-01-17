@@ -1,3 +1,4 @@
+mod curve;
 mod matrix;
 mod path;
 mod point;
@@ -9,6 +10,8 @@ pub use matrix::*;
 pub use path::*;
 pub use point::*;
 pub use rect::*;
+
+pub(crate) use curve::*;
 
 pub struct Degree(pub f32);
 pub struct Radian(pub f32);

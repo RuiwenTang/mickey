@@ -1,4 +1,6 @@
-use super::Point;
+use crate::{Matrix3x3, Point, Rect};
+
+use super::{Coeff, ConicCoeff, CubicCoeff, QuadCoeff};
 
 /// A PathVerb describes the type of one or more points in a path.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -188,6 +190,26 @@ impl Path {
         self
     }
 
+    /// Add a rectangle to the path.
+    /// Add a MoveTo from the top-left corner of the rectangle.
+    /// Add a LineTo to the top-right corner of the rectangle.
+    /// Add a LineTo to the bottom-right corner of the rectangle.
+    /// Add a LineTo to the bottom-left corner of the rectangle.
+    /// Add a ClosePath verb to the path.
+    ///
+    /// # Arguments
+    /// * `rect` - The rectangle.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn add_rect(self, rect: &Rect) -> Self {
+        self.move_to(Point::new(rect.left(), rect.top()))
+            .line_to(Point::new(rect.right(), rect.top()))
+            .line_to(Point::new(rect.right(), rect.bottom()))
+            .line_to(Point::new(rect.left(), rect.bottom()))
+            .close_path()
+    }
+
     /// Add a ClosePath verb to the path.
     /// If no previous MoveTo verb has been called, nothing will be added.
     ///
@@ -210,5 +232,119 @@ impl Path {
             self.verbs.push(PathVerb::MoveTo(Point::new(0.0, 0.0)));
             self.last_move_to_index = Some(self.verbs.len() - 1);
         }
+    }
+}
+
+pub(crate) struct Contour {
+    pub(crate) points: Vec<Point>,
+    pub(crate) closed: bool,
+}
+
+impl Contour {
+    pub(crate) fn new() -> Self {
+        Self {
+            points: Vec::new(),
+            closed: false,
+        }
+    }
+    pub(crate) fn add_point(&mut self, p: Point) {
+        if self.points.is_empty() || self.points.last().unwrap() != &p {
+            self.points.push(p);
+        }
+    }
+
+    pub(crate) fn last_point(&self) -> Option<&Point> {
+        self.points.last()
+    }
+}
+
+pub(crate) struct PolylineBuilder<'a> {
+    path: &'a Path,
+    matrix: Matrix3x3,
+}
+
+impl<'a> PolylineBuilder<'a> {
+    pub(crate) fn new(path: &'a Path, matrix: Matrix3x3) -> Self {
+        Self { path, matrix }
+    }
+
+    fn create_contours(self) -> Vec<Contour> {
+        let mut contours: Vec<Contour> = Vec::new();
+
+        for v in &self.path.verbs {
+            match v {
+                PathVerb::MoveTo(p) => {
+                    contours.push(Contour::new());
+
+                    contours
+                        .last_mut()
+                        .expect("Not create contour")
+                        .add_point(p.clone());
+                }
+                PathVerb::LineTo(p) => {
+                    contours
+                        .last_mut()
+                        .expect("Not create contour")
+                        .add_point(p.clone());
+                }
+                PathVerb::QuadTo(ctr, end) => {
+                    let p1 = contours
+                        .last()
+                        .expect("Not create contour")
+                        .last_point()
+                        .expect("Not start contour");
+                    let quad = QuadCoeff::from(p1, ctr, end);
+
+                    let stops = QuadCoeff::flatten(*p1, *ctr, *end, self.matrix);
+
+                    // TODO: flatten curve dynamic with line count
+                    for step in stops {
+                        contours.last_mut().unwrap().add_point(quad.eval(step));
+                    }
+                }
+                PathVerb::ConicTo(p2, p3, weight) => {
+                    let p1 = contours
+                        .last()
+                        .expect("Not create contour")
+                        .last_point()
+                        .expect("Not start contour");
+
+                    let conic = ConicCoeff::from(p1, p2, p3, *weight);
+
+                    let stops = ConicCoeff::flatten(*p1, *p2, *p3, *weight, self.matrix);
+
+                    // TODO: flatten curve dynamic with line count
+                    for step in stops {
+                        contours.last_mut().unwrap().add_point(conic.eval(step));
+                    }
+                }
+                PathVerb::CubicTo(p2, p3, p4) => {
+                    let p1 = contours
+                        .last()
+                        .expect("Not create contour")
+                        .last_point()
+                        .expect("Not start contour");
+                    let cubic = CubicCoeff::from(p1, p2, p3, p4);
+
+                    let stops = CubicCoeff::flatten(*p1, *p2, *p3, *p4, self.matrix);
+
+                    // TODO: flatten curve dynamic with line count
+                    for step in stops {
+                        contours.last_mut().unwrap().add_point(cubic.eval(step));
+                    }
+                }
+                PathVerb::ClosePath => {
+                    contours.last_mut().expect("Not start contour").closed = true;
+                }
+            }
+        }
+
+        return contours;
+    }
+
+    pub(crate) fn build(self) -> Vec<Contour> {
+        let contours = self.create_contours();
+
+        return contours;
     }
 }

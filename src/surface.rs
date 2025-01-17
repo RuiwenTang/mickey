@@ -2,7 +2,7 @@ use nalgebra::Matrix4;
 
 use crate::{
     Color, Content, Draw, EvenOddStencil, MeshType, NonZeroStencil, NoneStencil, Picture,
-    PositionChunk, RenderContext, StageBuffer, StrokeStencil, create_raster,
+    PositionChunk, RenderContext, StageBuffer, StrokeStencil,
 };
 
 fn mvp_to_buffer(mvp: &Matrix4<f32>) -> [f32; 16] {
@@ -64,14 +64,9 @@ impl<'a> Surface<'a> {
 
         let mut commands = Vec::new();
         for cmd in self.cmds {
-            let raster = create_raster(&cmd);
+            let raster = cmd.gen_raster();
 
-            if raster.is_none() {
-                continue;
-            }
-
-            let raster = raster.unwrap();
-            let mesh = raster.do_raster(&mut buffer);
+            let mesh = raster.do_raster(&cmd.transform(), &mut buffer);
 
             let transform = cmd.transform();
             let paint = cmd.paint();

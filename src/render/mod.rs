@@ -15,7 +15,6 @@ pub use context::*;
 pub(crate) use fragment::*;
 pub(crate) use geometry::*;
 pub(crate) use pipeline::*;
-pub(crate) use raster::*;
 pub(crate) use shader::*;
 
 /// The raster result. Which indicates if needs to do stencil then fill.
@@ -137,15 +136,25 @@ impl<G: Geometry + ShaderGenerator, F: Fragment + ShaderGenerator> LayoutGenerat
                 label: Some(format!("{}_group", self.geometry.shader_name()).as_str()),
                 entries: &vertex_group_entry,
             });
-        let fragment_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some(format!("{}_group", self.fragment.shader_name()).as_str()),
-                entries: &fragment_group_entry,
-            });
+        let fragment_group_layout = if fragment_group_entry.is_empty() {
+            None
+        } else {
+            Some(
+                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some(format!("{}_group", self.fragment.shader_name()).as_str()),
+                    entries: &fragment_group_entry,
+                }),
+            )
+        };
+
+        let mut layouts = vec![&vertex_group_layout];
+        if fragment_group_layout.is_some() {
+            layouts.push(fragment_group_layout.as_ref().unwrap());
+        }
 
         return device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&vertex_group_layout, &fragment_group_layout],
+            bind_group_layouts: &layouts,
             push_constant_ranges: &[],
         });
     }
