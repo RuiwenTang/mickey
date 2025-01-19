@@ -1,6 +1,6 @@
 use crate::{Matrix3x3, Point, Rect};
 
-use super::{Coeff, ConicCoeff, CubicCoeff, QuadCoeff};
+use super::{Coeff, ConicCoeff, CubicCoeff, FLOAT_ROOT2_OVER2, QuadCoeff};
 
 /// A PathVerb describes the type of one or more points in a path.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,6 +60,99 @@ pub enum FillRule {
     EvenOdd,
 }
 
+/// The Direction describes the direction of the path.
+/// The default value is Direction::CW.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Direction {
+    #[default]
+    CW,
+    CCW,
+}
+
+struct PointIterator {
+    pts: Vec<Point>,
+    current: usize,
+    advance: usize,
+}
+
+impl PointIterator {
+    fn new_direction_start(pts: Vec<Point>, direction: Direction, start: usize) -> Self {
+        let count = pts.len();
+
+        Self {
+            pts,
+            current: (start % count),
+            advance: if direction == Direction::CW {
+                1
+            } else {
+                count - 1
+            },
+        }
+    }
+
+    fn from_rect_dir_start(rect: &Rect, direction: Direction, start: usize) -> Self {
+        let mut pts = Vec::new();
+        pts.push(Point {
+            x: rect.left(),
+            y: rect.top(),
+        });
+        pts.push(Point {
+            x: rect.right(),
+            y: rect.top(),
+        });
+        pts.push(Point {
+            x: rect.right(),
+            y: rect.bottom(),
+        });
+        pts.push(Point {
+            x: rect.left(),
+            y: rect.bottom(),
+        });
+
+        Self::new_direction_start(pts, direction, start)
+    }
+
+    fn from_oval_dir_start(rect: &Rect, direction: Direction, start: usize) -> Self {
+        let mut pts = Vec::new();
+        let cx = rect.center().x;
+        let cy = rect.center().y;
+
+        pts.push(Point {
+            x: cx,
+            y: rect.top(),
+        });
+        pts.push(Point {
+            x: rect.right(),
+            y: cy,
+        });
+        pts.push(Point {
+            x: cx,
+            y: rect.bottom(),
+        });
+        pts.push(Point {
+            x: rect.left(),
+            y: cy,
+        });
+
+        Self::new_direction_start(pts, direction, start)
+    }
+
+    pub(crate) fn current(&self) -> Point {
+        assert!(self.current < self.pts.len());
+
+        return self.pts[self.current];
+    }
+
+    fn next(&mut self) -> Point {
+        let n = self.pts.len();
+        self.current = (self.current + self.advance) % n;
+
+        let pt = self.pts[self.current];
+
+        return pt;
+    }
+}
+
 /// Path describes a 2D geometry shape composed of lines or curves.
 /// It can be empty or contain one or more sub-paths.
 #[derive(Debug, Clone, PartialEq)]
@@ -82,7 +175,7 @@ impl Path {
     /// Set the fill rule.
     ///
     /// # Arguments
-    /// * `fill_rule` - The fill rule.
+    /// * `fill_rule` - The [`FillRule`] to be set for this path.
     ///
     /// # Returns
     /// The path.
@@ -91,7 +184,7 @@ impl Path {
         self
     }
 
-    /// Get the fill rule.
+    /// Get the [`FillRule`] of this path.
     ///
     /// # Returns
     /// The fill rule.
@@ -108,14 +201,14 @@ impl Path {
     ///
     /// # Returns
     /// The path.
-    pub fn move_to(mut self, point: Point) -> Self {
+    pub fn move_to<T: Into<Point>>(mut self, p: T) -> Self {
         if self.verbs.last().is_some() && self.verbs.last().unwrap().is_move_to() {
             // replace the last MoveTo verb
-            self.verbs[self.last_move_to_index.unwrap()] = PathVerb::MoveTo(point);
+            self.verbs[self.last_move_to_index.unwrap()] = PathVerb::MoveTo(p.into());
             return self;
         }
 
-        self.verbs.push(PathVerb::MoveTo(point));
+        self.verbs.push(PathVerb::MoveTo(p.into()));
         self.last_move_to_index = Some(self.verbs.len() - 1);
         self
     }
@@ -129,10 +222,10 @@ impl Path {
     ///
     /// # Returns
     /// The path.
-    pub fn line_to(mut self, point: Point) -> Self {
+    pub fn line_to<T: Into<Point>>(mut self, point: T) -> Self {
         self.inject_move_to_if_needed();
 
-        self.verbs.push(PathVerb::LineTo(point));
+        self.verbs.push(PathVerb::LineTo(point.into()));
         self
     }
 
@@ -146,10 +239,11 @@ impl Path {
     ///
     /// # Returns
     /// The path.
-    pub fn quad_to(mut self, control_point: Point, end_point: Point) -> Self {
+    pub fn quad_to<T: Into<Point>>(mut self, control_point: T, end_point: T) -> Self {
         self.inject_move_to_if_needed();
 
-        self.verbs.push(PathVerb::QuadTo(control_point, end_point));
+        self.verbs
+            .push(PathVerb::QuadTo(control_point.into(), end_point.into()));
         self
     }
 
@@ -182,15 +276,18 @@ impl Path {
     ///
     /// # Returns
     /// The path.
-    pub fn conic_to(mut self, control_point: Point, end_point: Point, weight: f32) -> Self {
+    pub fn conic_to<T: Into<Point>>(mut self, control_point: T, end_point: T, weight: f32) -> Self {
         self.inject_move_to_if_needed();
 
-        self.verbs
-            .push(PathVerb::ConicTo(control_point, end_point, weight));
+        self.verbs.push(PathVerb::ConicTo(
+            control_point.into(),
+            end_point.into(),
+            weight,
+        ));
         self
     }
 
-    /// Add a rectangle to the path.
+    /// Add a rectangle to the path in default [`Direction::CW`] direction.
     /// Add a MoveTo from the top-left corner of the rectangle.
     /// Add a LineTo to the top-right corner of the rectangle.
     /// Add a LineTo to the bottom-right corner of the rectangle.
@@ -203,11 +300,111 @@ impl Path {
     /// # Returns
     /// The path.
     pub fn add_rect(self, rect: &Rect) -> Self {
-        self.move_to(Point::new(rect.left(), rect.top()))
-            .line_to(Point::new(rect.right(), rect.top()))
-            .line_to(Point::new(rect.right(), rect.bottom()))
-            .line_to(Point::new(rect.left(), rect.bottom()))
+        self.add_rect_with_direction(rect, Default::default(), 0)
+    }
+
+    /// Add a rectangle to the path in the specified direction.
+    ///
+    /// # Arguments
+    /// * `rect` - The rectangle.
+    /// * `direction` - The direction.
+    /// * `start` - The start index of the rectangle.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn add_rect_with_direction(self, rect: &Rect, direction: Direction, start: usize) -> Self {
+        if rect.is_empty() {
+            return self;
+        }
+
+        let mut iter = PointIterator::from_rect_dir_start(rect, direction, start);
+
+        self.move_to(iter.next())
+            .line_to(iter.next())
+            .line_to(iter.next())
+            .line_to(iter.next())
             .close_path()
+    }
+
+    /// Add an oval to the path in direction.
+    ///
+    /// # Arguments
+    /// * `oval` - The oval.
+    /// * `direction` - The direction.
+    /// * `start` - The start index of the oval.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn add_oval_with_direction(self, oval: &Rect, direction: Direction, start: usize) -> Self {
+        if oval.is_empty() {
+            return self;
+        }
+
+        let mut oval_iter = PointIterator::from_oval_dir_start(oval, direction, start);
+        let mut rect_iter = PointIterator::from_rect_dir_start(oval, direction, start);
+
+        let weight = FLOAT_ROOT2_OVER2;
+
+        return self
+            .move_to(oval_iter.current())
+            .conic_to(rect_iter.next(), oval_iter.next(), weight)
+            .conic_to(rect_iter.next(), oval_iter.next(), weight)
+            .conic_to(rect_iter.next(), oval_iter.next(), weight)
+            .conic_to(rect_iter.next(), oval_iter.next(), weight)
+            .close_path();
+    }
+
+    /// Add an oval to the path. In default [`Direction::CW`] direction.
+    ///
+    /// # Arguments
+    /// * `oval` - The oval.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn add_oval(self, oval: &Rect) -> Self {
+        self.add_oval_with_direction(oval, Default::default(), 0)
+    }
+
+    /// Add a circle to the path in direction.
+    ///
+    /// # Arguments
+    /// * `center` - The center of the circle.
+    /// * `radius` - The radius of the circle.
+    /// * `direction` - The direction.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn add_circle_with_direction<T: Into<Point>>(
+        self,
+        center: T,
+        radius: f32,
+        direction: Direction,
+    ) -> Self {
+        if radius <= 0.0 {
+            self
+        } else {
+            let center = center.into();
+            let cx = center.x;
+            let cy = center.y;
+
+            self.add_oval_with_direction(
+                &Rect::new_ltrb(cx - radius, cy - radius, cx + radius, cy + radius),
+                direction,
+                1,
+            )
+        }
+    }
+
+    /// Add a circle to the path. In default [`Direction::CW`] direction.
+    ///
+    /// # Arguments
+    /// * `center` - The center of the circle.
+    /// * `radius` - The radius of the circle.
+    ///
+    /// # Returns
+    /// The path.
+    pub fn add_circle<T: Into<Point>>(self, center: T, radius: f32) -> Self {
+        self.add_circle_with_direction(center, radius, Default::default())
     }
 
     /// Add a ClosePath verb to the path.

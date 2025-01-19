@@ -2,9 +2,7 @@ mod common;
 
 use common::App;
 
-use mickey::{
-    Color, FillRule, Paint, Path, Picture, PictureRecorder, Point, Rect, RenderContext, Surface,
-};
+use mickey::*;
 
 struct HelloSurface {
     context: RenderContext,
@@ -39,7 +37,7 @@ impl common::Renderer for HelloSurface {
         let rect = rect.offset(0.0, 200.0);
 
         recorder.save();
-        recorder.rotate_at(rect.center(), 45.0);
+        recorder.rotate_at(rect.center(), 45.0.degree());
 
         recorder.draw_rect(rect, paint);
 
@@ -47,11 +45,11 @@ impl common::Renderer for HelloSurface {
 
         let path = Path::new()
             .with_fill_rule(FillRule::EvenOdd)
-            .move_to(Point::new(100.0, 10.0))
-            .line_to(Point::new(40.0, 180.0))
-            .line_to(Point::new(190.0, 60.0))
-            .line_to(Point::new(10.0, 60.0))
-            .line_to(Point::new(160.0, 180.0))
+            .move_to((100.0, 10.0))
+            .line_to((40.0, 180.0))
+            .line_to((190.0, 60.0))
+            .line_to((10.0, 60.0))
+            .line_to((160.0, 180.0))
             .close_path();
 
         paint.color = Color::green().with_alpha(0.5);
@@ -59,6 +57,8 @@ impl common::Renderer for HelloSurface {
         recorder.translate(300.0, 0.0);
 
         recorder.draw_path(path, paint);
+
+        recorder.draw_circle((300.0, 300.0), 100.0, paint);
 
         self.picture = Some(recorder.finish_recorder());
     }

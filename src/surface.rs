@@ -48,12 +48,18 @@ impl<'a> Surface<'a> {
         self
     }
 
+    /// Replay the content of the [`Picture`] on the surface.
+    /// The picture will be rendered with the same transform as the picture.
+    ///
+    /// # Arguments
+    ///
+    /// * `picture` - The picture to replay.
     pub fn replay(mut self, picture: &Picture) -> Self {
         self.cmds.extend_from_slice(picture.draws.as_slice());
         self
     }
 
-    /// Flush the content of the surface to the target wgpu::Texture.
+    /// Flush the content of the surface to the target [`wgpu::Texture`].
     pub fn flush(self, context: &mut RenderContext, device: &wgpu::Device, queue: &wgpu::Queue) {
         let format = self.texture.format();
         let sample_count = 4;

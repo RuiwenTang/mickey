@@ -137,3 +137,21 @@ impl From<[f64; 2]> for Point {
         }
     }
 }
+
+impl Into<Point> for (f32, f32) {
+    fn into(self) -> Point {
+        Point {
+            x: self.0,
+            y: self.1,
+        }
+    }
+}
+
+impl Into<Point> for (f64, f64) {
+    fn into(self) -> Point {
+        Point {
+            x: self.0 as f32,
+            y: self.1 as f32,
+        }
+    }
+}

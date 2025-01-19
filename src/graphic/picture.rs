@@ -59,7 +59,7 @@ impl State {
 }
 
 /// The picture recorder is used to record the drawing commands.
-/// After the drawing commands are recorded, it can be persisted into a Picture object.
+/// After the drawing commands are recorded, it can be persisted into a [`Picture`]` object.
 pub struct PictureRecorder {
     pub(crate) state: Vec<State>,
     pub(crate) draws: Vec<Draw>,
@@ -93,6 +93,18 @@ impl PictureRecorder {
     pub fn draw_rect(&mut self, rect: Rect, paint: Paint) {
         self.draws
             .push(Draw::DrawRect(rect, paint, self.current_transform()));
+    }
+
+    /// Draw a circle with a paint.
+    /// The circle will be transformed by the current matrix. And clipped by the current clip state.
+    ///
+    /// # Arguments
+    /// * `center` - The center of the circle.
+    /// * `radius` - The radius of the circle.
+    /// * `paint` - The paint to draw the circle.
+    pub fn draw_circle<T: Into<Point>>(&mut self, center: T, radius: f32, paint: Paint) {
+        let path = Path::new().add_circle(center.into(), radius);
+        self.draw_path(path, paint);
     }
 
     /// Draw a picture content to the current canvas.
