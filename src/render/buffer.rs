@@ -36,6 +36,15 @@ impl StageBuffer {
         }
     }
 
+    /// Push raw data to the buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The data to push.
+    ///
+    /// # Returns
+    ///
+    /// The buffer view of the [`StageBufferView`] for the pushed data.
     pub fn push<T: bytemuck::Pod>(&mut self, data: &[T]) -> StageBufferView {
         let size = std::mem::size_of::<T>() * data.len();
         let offset = self.buffer.len();
@@ -49,6 +58,15 @@ impl StageBuffer {
         }
     }
 
+    /// Push uniform data to the buffer. Which will be aligned to the minimum alignment of the uniform data required by the GPU device.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The data to push.
+    ///
+    /// # Returns
+    ///
+    /// The buffer view of the [`StageBufferView`] for the pushed data.
     pub fn push_align<T: bytemuck::Pod>(&mut self, data: &[T]) -> StageBufferView {
         let size = std::mem::size_of::<T>() * data.len();
         let mut offset = self.buffer.len();
@@ -69,6 +87,16 @@ impl StageBuffer {
         }
     }
 
+    /// Generate the buffer from the stage buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - The device.
+    /// * `queue` - The queue.
+    ///
+    /// # Returns
+    ///
+    /// The generated buffer or None if the buffer is empty.
     pub fn gen_buffer(self, device: &wgpu::Device, queue: &wgpu::Queue) -> Option<wgpu::Buffer> {
         if self.buffer.len() == 0 {
             return None;

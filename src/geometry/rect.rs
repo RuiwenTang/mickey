@@ -1,4 +1,5 @@
 use crate::Point;
+use nalgebra::Matrix4;
 
 /// Rect describes a 2D rectangle.
 /// It is a rectangle with the left top point at (left, top) and the right bottom point at (right, bottom).
@@ -104,5 +105,27 @@ impl Rect {
         self.bottom += dy;
 
         self
+    }
+}
+
+/// Convert the Rect into mvp matrix.
+/// The matrix is a 4x4 matrix coliumn major for WGPU rendering.
+impl Into<[f32; 16]> for Rect {
+    fn into(self) -> [f32; 16] {
+        let mvp = Matrix4::new_orthographic(
+            self.left,
+            self.right,
+            self.bottom,
+            self.top,
+            -1000.0,
+            1000.0,
+        );
+
+        mvp.as_slice()
+            .iter()
+            .map(|v| *v)
+            .collect::<Vec<f32>>()
+            .try_into()
+            .unwrap()
     }
 }

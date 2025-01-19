@@ -4,6 +4,7 @@ mod content;
 mod context;
 mod fragment;
 mod geometry;
+mod layer;
 mod pipeline;
 mod raster;
 mod shader;
@@ -14,6 +15,7 @@ pub(crate) use content::*;
 pub use context::*;
 pub(crate) use fragment::*;
 pub(crate) use geometry::*;
+pub(crate) use layer::*;
 pub(crate) use pipeline::*;
 pub(crate) use shader::*;
 

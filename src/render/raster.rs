@@ -2,7 +2,6 @@ use nalgebra::Vector2;
 
 use crate::{
     Draw, FillRule, Matrix3x3, Mesh, MeshType, Path, Point, PolylineBuilder, Rect, StageBuffer,
-    Style,
 };
 
 pub(crate) trait Raster {

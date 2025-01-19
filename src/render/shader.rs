@@ -10,10 +10,14 @@ pub(crate) struct PositionChunk {
 }
 
 impl PositionChunk {
-    pub(crate) fn new(mvp: [f32; 16], transform: [f32; 16], info: [f32; 4]) -> Self {
+    pub(crate) fn new<MVP: Into<[f32; 16]>, MATRIX: Into<[f32; 16]>>(
+        mvp: MVP,
+        transform: MATRIX,
+        info: [f32; 4],
+    ) -> Self {
         Self {
-            mvp,
-            transform,
+            mvp: mvp.into(),
+            transform: transform.into(),
             info,
         }
     }

@@ -185,7 +185,7 @@ impl PictureRecorder {
     /// ```
     /// use mickey::*;
     /// let mut recorder = PictureRecorder::new();
-    /// recorder.rotate(45.0); // rotate in 45 degree
+    /// recorder.rotate(45.0.degree()); // rotate in 45 degree
     /// recorder.rotate(Radian(0.3)); // rotate in radians
     /// recorder.rotate(Degree(45.0)); // rotate in degree
     /// ```
