@@ -32,12 +32,14 @@ impl common::Renderer for HelloSurface {
 
         recorder.draw_rect(rect, paint);
 
-        paint.set_color(Color::blue());
+        paint.set_color(Color::blue().with_alpha(0.3));
 
         let rect = rect.offset(0.0, 200.0);
 
         recorder.save();
         recorder.rotate_at(rect.center(), 45.0.degree());
+
+        paint.set_style(Stroke::default().with_width(10.0));
 
         recorder.draw_rect(rect, paint);
 
@@ -53,12 +55,34 @@ impl common::Renderer for HelloSurface {
             .close_path();
 
         paint.color = Color::green().with_alpha(0.5);
+        paint.set_style(Style::Fill);
 
+        recorder.save();
         recorder.translate(300.0, 0.0);
 
         recorder.draw_path(path, paint);
 
         recorder.draw_circle((300.0, 300.0), 100.0, paint);
+        recorder.restore();
+
+        paint.color = Color::red().with_alpha(0.5);
+
+        paint.set_style(
+            Stroke::default()
+                .with_cap(StrokeCap::Round)
+                .with_join(StrokeJoin::Round)
+                .with_width(10.0),
+        );
+
+        recorder.translate(600.0, 100.0);
+        recorder.draw_path(
+            Path::new()
+                .move_to((10.0, 10.0))
+                .quad_to((256.0, 64.0), (128.0, 128.0))
+                .quad_to((10.0, 192.0), (250.0, 250.0))
+                .close_path(),
+            paint,
+        );
 
         self.picture = Some(recorder.finish_recorder());
     }
