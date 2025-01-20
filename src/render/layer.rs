@@ -1,9 +1,44 @@
 use crate::{Color, Draw, Rect};
 
 use super::{
-    Command, Content, EvenOddStencil, MeshType, NonZeroStencil, NoneStencil, PositionChunk,
-    RenderContext, StageBuffer, StrokeStencil,
+    ColorStep, Command, Content, EvenOddStencil, Mesh, MeshType, NonZeroStencil, NoneStencil,
+    PositionChunk, RenderContext, StageBuffer, StencilStep, StrokeStencil,
 };
+
+fn render_content<C: StencilStep + ColorStep>(
+    content: &C,
+    mesh: Mesh,
+    buffer: &mut StageBuffer,
+    context: &mut RenderContext,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    pass: &mut Vec<Command>,
+) {
+    let needs_stencil = match mesh.mesh_type {
+        MeshType::Direct => false,
+        MeshType::Stroke => false,
+        MeshType::EvenOdd => true,
+        MeshType::NonZero => true,
+    };
+
+    if needs_stencil {
+        // draw stencil mask first
+        pass.push(content.render_stencil(mesh, buffer, context, device, queue));
+
+        // draw color with stencil mask
+        if mesh.mesh_type == MeshType::EvenOdd {
+            pass.push(content.render_color::<EvenOddStencil>(mesh, buffer, context, device, queue));
+        } else {
+            pass.push(content.render_color::<NonZeroStencil>(mesh, buffer, context, device, queue));
+        }
+    } else {
+        if mesh.mesh_type == MeshType::Stroke {
+            pass.push(content.render_color::<StrokeStencil>(mesh, buffer, context, device, queue));
+        } else {
+            pass.push(content.render_color::<NoneStencil>(mesh, buffer, context, device, queue));
+        }
+    }
+}
 
 pub(crate) struct Layer<'a> {
     view_port: Rect,
@@ -75,6 +110,8 @@ impl<'a> Layer<'a> {
     ) -> Vec<Command> {
         let mut commands = Vec::new();
 
+        let total_depth = (self.draws.len() + 1) as f32;
+
         for cmd in self.draws {
             let raster = cmd.gen_raster();
 
@@ -86,44 +123,25 @@ impl<'a> Layer<'a> {
                 paint.color,
                 self.target_format(),
                 self.sample_count,
-                PositionChunk::new(self.view_port, cmd.transform(), [0.5, 0.0, 0.0, 0.0]),
+                PositionChunk::new(self.view_port, cmd.transform(), [
+                    cmd.depth() as f32 / total_depth,
+                    0.0,
+                    0.0,
+                    0.0,
+                ]),
             );
 
-            let needs_stencil = match mesh.mesh_type {
-                MeshType::Direct => false,
-                MeshType::Stroke => false,
-                MeshType::EvenOdd => true,
-                MeshType::NonZero => true,
-            };
-
-            if needs_stencil {
-                // draw stencil mask first
-                commands.push(content.render_stencil(mesh, buffer, context, device, queue));
-
-                // draw color with stencil mask
-                if mesh.mesh_type == MeshType::EvenOdd {
-                    commands.push(
-                        content
-                            .render_color::<EvenOddStencil>(mesh, buffer, context, device, queue),
-                    );
-                } else {
-                    commands.push(
-                        content
-                            .render_color::<NonZeroStencil>(mesh, buffer, context, device, queue),
-                    );
-                }
-            } else {
-                if mesh.mesh_type == MeshType::Stroke {
-                    commands.push(
-                        content.render_color::<StrokeStencil>(mesh, buffer, context, device, queue),
-                    );
-                } else {
-                    commands.push(
-                        content.render_color::<NoneStencil>(mesh, buffer, context, device, queue),
-                    );
-                }
-            }
+            render_content(
+                &content,
+                mesh,
+                buffer,
+                context,
+                device,
+                queue,
+                &mut commands,
+            );
         }
+
         return commands;
     }
 

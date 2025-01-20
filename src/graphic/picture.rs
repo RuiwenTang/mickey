@@ -5,24 +5,31 @@ use crate::{Angle, Matrix3x3, Paint, Path, Point, Rect};
 pub(crate) enum Draw {
     /// Draw a path with a paint.
     /// The path will be transformed by the matrix.
-    DrawPath(Path, Paint, Matrix3x3),
+    DrawPath(Path, Paint, Matrix3x3, u32),
     /// Draw a rect with a paint.
     /// The rect will be transformed by the matrix.
-    DrawRect(Rect, Paint, Matrix3x3),
+    DrawRect(Rect, Paint, Matrix3x3, u32),
 }
 
 impl Draw {
     pub(crate) fn transform(&self) -> Matrix3x3 {
         match self {
-            Draw::DrawPath(_, _, m) => m.clone(),
-            Draw::DrawRect(_, _, m) => m.clone(),
+            Draw::DrawPath(_, _, m, _) => m.clone(),
+            Draw::DrawRect(_, _, m, _) => m.clone(),
         }
     }
 
     pub(crate) fn paint(&self) -> Paint {
         match self {
-            Draw::DrawPath(_, paint, _) => paint.clone(),
-            Draw::DrawRect(_, paint, _) => paint.clone(),
+            Draw::DrawPath(_, paint, _, _) => paint.clone(),
+            Draw::DrawRect(_, paint, _, _) => paint.clone(),
+        }
+    }
+
+    pub(crate) fn depth(&self) -> u32 {
+        match self {
+            Draw::DrawPath(_, _, _, depth) => *depth,
+            Draw::DrawRect(_, _, _, depth) => *depth,
         }
     }
 }
@@ -63,6 +70,7 @@ impl State {
 pub struct PictureRecorder {
     pub(crate) state: Vec<State>,
     pub(crate) draws: Vec<Draw>,
+    pub(crate) current_depth: u32,
 }
 
 impl PictureRecorder {
@@ -70,6 +78,7 @@ impl PictureRecorder {
         PictureRecorder {
             state: vec![State::default()],
             draws: vec![],
+            current_depth: 0,
         }
     }
 
@@ -80,8 +89,13 @@ impl PictureRecorder {
     /// * `path` - The path to draw.
     /// * `paint` - The paint to draw the path.
     pub fn draw_path(&mut self, path: Path, paint: Paint) {
-        self.draws
-            .push(Draw::DrawPath(path, paint, self.current_transform()));
+        self.current_depth += 1;
+        self.draws.push(Draw::DrawPath(
+            path,
+            paint,
+            self.current_transform(),
+            self.current_depth,
+        ));
     }
 
     /// Draw a rect with a paint.
@@ -91,8 +105,13 @@ impl PictureRecorder {
     /// * `rect` - The rect to draw.
     /// * `paint` - The paint to draw the rect.
     pub fn draw_rect(&mut self, rect: Rect, paint: Paint) {
-        self.draws
-            .push(Draw::DrawRect(rect, paint, self.current_transform()));
+        self.current_depth += 1;
+        self.draws.push(Draw::DrawRect(
+            rect,
+            paint,
+            self.current_transform(),
+            self.current_depth,
+        ));
     }
 
     /// Draw a circle with a paint.
@@ -117,22 +136,26 @@ impl PictureRecorder {
 
         for draw in &picture.draws {
             match draw {
-                Draw::DrawPath(path, paint, m) => {
+                Draw::DrawPath(path, paint, m, depth) => {
                     self.draws.push(Draw::DrawPath(
                         path.clone(),
                         paint.clone(),
                         current_transform * m.clone(),
+                        self.current_depth + depth,
                     ));
                 }
-                Draw::DrawRect(rect, paint, m) => {
+                Draw::DrawRect(rect, paint, m, depth) => {
                     self.draws.push(Draw::DrawRect(
                         rect.clone(),
                         paint.clone(),
                         current_transform * m.clone(),
+                        self.current_depth + depth,
                     ));
                 }
             }
         }
+
+        self.current_depth += picture.draws.len() as u32;
     }
 
     /// Save the current state of the canvas.

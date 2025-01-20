@@ -4,6 +4,28 @@ use super::{
     BWStencilMask, ColorFragment, DepthStencilStateProvider, RenderContext, StencilFragment,
 };
 
+pub(crate) trait StencilStep {
+    fn render_stencil(
+        &self,
+        mesh: Mesh,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Command;
+}
+
+pub(crate) trait ColorStep {
+    fn render_color<S: DepthStencilStateProvider>(
+        &self,
+        mesh: Mesh,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Command;
+}
+
 pub(crate) struct Content<COLOR> {
     pub(crate) color: COLOR,
 
@@ -29,8 +51,8 @@ impl<COLOR> Content<COLOR> {
     }
 }
 
-impl<COLOR> Content<COLOR> {
-    pub(crate) fn render_stencil(
+impl<COLOR> StencilStep for Content<COLOR> {
+    fn render_stencil(
         &self,
         mesh: Mesh,
         buffer: &mut StageBuffer,
@@ -50,8 +72,8 @@ impl<COLOR> Content<COLOR> {
     }
 }
 
-impl Content<Color> {
-    pub(crate) fn render_color<S: DepthStencilStateProvider>(
+impl ColorStep for Content<Color> {
+    fn render_color<S: DepthStencilStateProvider>(
         &self,
         mesh: Mesh,
         buffer: &mut StageBuffer,

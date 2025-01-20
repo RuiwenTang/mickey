@@ -1,11 +1,10 @@
-use std::usize;
+use std::{f32::consts::PI, usize};
 
 use nalgebra::Vector2;
 
 use crate::{Matrix3x3, Point};
 
 pub(crate) const FLOAT_ROOT2_OVER2: f32 = 0.707106781;
-pub(crate) const PI: f32 = 3.1415926;
 
 fn pt_to_line(pt: &Point, start: &Point, end: &Point) -> f32 {
     let p = Vector2::new(pt.x as f64, pt.y as f64);

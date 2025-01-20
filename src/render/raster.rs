@@ -11,8 +11,8 @@ pub(crate) trait Raster {
 impl Draw {
     pub(crate) fn gen_raster(&self) -> Box<dyn Raster> {
         match self {
-            Draw::DrawRect(rect, _, _) => Box::new(RectFillRaster { rect: *rect }),
-            Draw::DrawPath(path, _, _) => Box::new(PathFillRaster { path: path.clone() }),
+            Draw::DrawRect(rect, _, _, _) => Box::new(RectFillRaster { rect: *rect }),
+            Draw::DrawPath(path, _, _, _) => Box::new(PathFillRaster { path: path.clone() }),
         }
     }
 }
