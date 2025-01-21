@@ -1,8 +1,9 @@
-use crate::{Color, Draw, Rect};
+use crate::{ClipOp, Color, Draw, Rect};
 
 use super::{
-    ColorStep, Command, Content, EvenOddStencil, Mesh, MeshType, NonZeroStencil, NoneStencil,
-    PositionChunk, RenderContext, StageBuffer, StencilStep, StrokeStencil,
+    ColorStep, Command, Content, DifferenceClip, EvenOddStencil, IntersectClip, Mesh, MeshType,
+    NonZeroStencil, NoneStencil, PositionChunk, RenderContext, StageBuffer, StencilStep,
+    StrokeStencil,
 };
 
 fn render_content<C: StencilStep + ColorStep>(
@@ -36,6 +37,49 @@ fn render_content<C: StencilStep + ColorStep>(
             pass.push(content.render_color::<StrokeStencil>(mesh, buffer, context, device, queue));
         } else {
             pass.push(content.render_color::<NoneStencil>(mesh, buffer, context, device, queue));
+        }
+    }
+}
+
+fn clip_content<C: StencilStep + ColorStep>(
+    content: &C,
+    op: ClipOp,
+    mesh: Mesh,
+    buffer: &mut StageBuffer,
+    context: &mut RenderContext,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    pass: &mut Vec<Command>,
+) {
+    pass.push(content.render_stencil(mesh, buffer, context, device, queue));
+
+    let even_odd = match mesh.mesh_type {
+        MeshType::EvenOdd => true,
+        _ => false,
+    };
+
+    match op {
+        ClipOp::Intersect => {
+            if even_odd {
+                pass.push(content.render_color::<IntersectClip<EvenOddStencil>>(
+                    mesh, buffer, context, device, queue,
+                ));
+            } else {
+                pass.push(content.render_color::<IntersectClip<NonZeroStencil>>(
+                    mesh, buffer, context, device, queue,
+                ));
+            }
+        }
+        ClipOp::Difference => {
+            if even_odd {
+                pass.push(content.render_color::<DifferenceClip<EvenOddStencil>>(
+                    mesh, buffer, context, device, queue,
+                ));
+            } else {
+                pass.push(content.render_color::<DifferenceClip<NonZeroStencil>>(
+                    mesh, buffer, context, device, queue,
+                ))
+            }
         }
     }
 }
@@ -119,27 +163,57 @@ impl<'a> Layer<'a> {
 
             let paint = cmd.paint();
 
-            let content = Content::new(
-                paint.color,
-                self.target_format(),
-                self.sample_count,
-                PositionChunk::new(self.view_port, cmd.transform(), [
-                    cmd.depth() as f32 / total_depth,
-                    0.0,
-                    0.0,
-                    0.0,
-                ]),
-            );
+            let clip_op = cmd.clip_op();
 
-            render_content(
-                &content,
-                mesh,
-                buffer,
-                context,
-                device,
-                queue,
-                &mut commands,
-            );
+            match clip_op {
+                Some(op) => {
+                    let content = Content::new(
+                        (self.view_port, op),
+                        self.target_format(),
+                        self.sample_count,
+                        PositionChunk::new(self.view_port, cmd.transform(), [
+                            cmd.depth() as f32 / total_depth,
+                            0.0,
+                            0.0,
+                            0.0,
+                        ]),
+                    );
+
+                    clip_content(
+                        &content,
+                        op,
+                        mesh,
+                        buffer,
+                        context,
+                        device,
+                        queue,
+                        &mut commands,
+                    );
+                }
+                None => {
+                    let content = Content::new(
+                        paint.color,
+                        self.target_format(),
+                        self.sample_count,
+                        PositionChunk::new(self.view_port, cmd.transform(), [
+                            cmd.depth() as f32 / total_depth,
+                            0.0,
+                            0.0,
+                            0.0,
+                        ]),
+                    );
+
+                    render_content(
+                        &content,
+                        mesh,
+                        buffer,
+                        context,
+                        device,
+                        queue,
+                        &mut commands,
+                    );
+                }
+            }
         }
 
         return commands;

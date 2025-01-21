@@ -26,12 +26,19 @@ impl Draw {
                     Box::new(PathStroke::new(path.clone(), width, cap, join))
                 }
             },
+            Draw::ClipPath(path, _, _, _) => Box::new(PathFillRaster { path: path.clone() }),
         }
     }
 }
 
-struct RectFillRaster {
+pub(crate) struct RectFillRaster {
     rect: Rect,
+}
+
+impl RectFillRaster {
+    pub(crate) fn new(rect: Rect) -> Self {
+        Self { rect }
+    }
 }
 
 impl Raster for RectFillRaster {

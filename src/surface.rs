@@ -7,6 +7,7 @@ pub struct Surface<'a> {
     texture: &'a wgpu::Texture,
     color: Color,
     cmds: Vec<Draw>,
+    view_port: Rect,
 }
 
 impl<'a> Surface<'a> {
@@ -20,6 +21,7 @@ impl<'a> Surface<'a> {
             texture,
             color: Color::transparent(),
             cmds: Vec::new(),
+            view_port: Rect::new_xywh(0.0, 0.0, texture.width() as f32, texture.height() as f32),
         }
     }
 
@@ -31,6 +33,18 @@ impl<'a> Surface<'a> {
     /// * `color` - The clear color of the surface.
     pub fn with_clear_color(mut self, color: Color) -> Self {
         self.color = color;
+        self
+    }
+
+    /// Set the view port of the surface.
+    /// The default view port is the full size of the surface.
+    /// This is a logical level view port, which decides the area of the content to be rendered.
+    ///
+    /// # Arguments
+    ///
+    /// * `view_port` - The view port of the surface.
+    pub fn with_view_port(mut self, view_port: Rect) -> Self {
+        self.view_port = view_port;
         self
     }
 
@@ -48,12 +62,7 @@ impl<'a> Surface<'a> {
     /// Flush the content of the surface to the target [`wgpu::Texture`].
     pub fn flush(self, context: &mut RenderContext, device: &wgpu::Device, queue: &wgpu::Queue) {
         let root_layer = Layer::new(
-            Rect::new_xywh(
-                0.0,
-                0.0,
-                self.texture.width() as f32,
-                self.texture.height() as f32,
-            ),
+            self.view_port,
             1,
             self.cmds.as_slice(),
             self.texture,

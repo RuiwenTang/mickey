@@ -74,6 +74,7 @@ impl common::Renderer for HelloSurface {
                 .with_width(10.0),
         );
 
+        recorder.save();
         recorder.translate(600.0, 100.0);
         recorder.draw_path(
             Path::new()
@@ -83,6 +84,32 @@ impl common::Renderer for HelloSurface {
                 .close_path(),
             paint,
         );
+        recorder.restore();
+
+        {
+            recorder.save();
+            recorder.translate(600.0, 400.0);
+
+            let path = Path::new()
+                .add_rect(&Rect::new_ltrb(20.0, 15.0, 100.0, 95.0))
+                .add_rect(&Rect::new_ltrb(50.0, 65.0, 130.0, 135.0));
+
+            recorder.save();
+            recorder.clip(path.clone(), Default::default());
+
+            recorder.draw_circle((70.0, 85.0), 60.0, Paint::default());
+            recorder.restore();
+
+            recorder.translate(100.0, 100.0);
+
+            recorder.clip(
+                path.clone().with_fill_rule(FillRule::EvenOdd),
+                ClipOp::Difference,
+            );
+            recorder.draw_circle((70.0, 85.0), 60.0, Paint::default());
+
+            recorder.restore();
+        }
 
         self.picture = Some(recorder.finish_recorder());
     }
@@ -97,6 +124,7 @@ impl common::Renderer for HelloSurface {
 
         surface
             .with_clear_color(Color::white())
+            .with_view_port(Rect::new_xywh(0.0, 0.0, 1000.0, 1000.0))
             .replay(self.picture.as_ref().expect("picture not init"))
             .flush(&mut self.context, device, queue);
         return false;

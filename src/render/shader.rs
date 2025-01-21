@@ -22,6 +22,10 @@ impl PositionChunk {
         }
     }
 
+    pub(crate) fn info(&self) -> [f32; 4] {
+        self.info
+    }
+
     pub(crate) fn code_fragment() -> String {
         String::from(
             r#"

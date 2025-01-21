@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, usize};
+use std::usize;
 
 use nalgebra::Vector2;
 
@@ -140,10 +140,6 @@ pub(crate) fn dot_product(p: &Vector2<f64>, q: &Vector2<f64>) -> f64 {
 
 pub(crate) fn distance(p: &Vector2<f64>) -> f64 {
     (p.x * p.x + p.y * p.y).sqrt()
-}
-
-pub(crate) fn degree_to_radian(degree: f32) -> f32 {
-    degree * PI / 180.0
 }
 
 pub(crate) fn circle_interpolation(

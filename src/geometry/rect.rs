@@ -1,4 +1,4 @@
-use crate::Point;
+use crate::{Path, Point};
 use nalgebra::Matrix4;
 
 /// Rect describes a 2D rectangle.
@@ -127,5 +127,16 @@ impl Into<[f32; 16]> for Rect {
             .collect::<Vec<f32>>()
             .try_into()
             .unwrap()
+    }
+}
+
+impl Into<Path> for Rect {
+    fn into(self) -> Path {
+        Path::new()
+            .move_to((self.left, self.top))
+            .line_to((self.right, self.top))
+            .line_to((self.right, self.bottom))
+            .line_to((self.left, self.bottom))
+            .close_path()
     }
 }

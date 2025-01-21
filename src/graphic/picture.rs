@@ -1,4 +1,4 @@
-use crate::{Angle, Matrix3x3, Paint, Path, Point, Rect};
+use crate::{Angle, ClipOp, Matrix3x3, Paint, Path, Point, Rect};
 
 /// The command describes the rendering operation on the canvas.
 #[derive(Debug, Clone, PartialEq)]
@@ -9,6 +9,10 @@ pub(crate) enum Draw {
     /// Draw a rect with a paint.
     /// The rect will be transformed by the matrix.
     DrawRect(Rect, Paint, Matrix3x3, u32),
+    /// Clip a path.
+    /// The path will be transformed by the matrix.
+    /// The clip operation will be applied to the current clip state.
+    ClipPath(Path, ClipOp, Matrix3x3, u32),
 }
 
 impl Draw {
@@ -16,6 +20,7 @@ impl Draw {
         match self {
             Draw::DrawPath(_, _, m, _) => m.clone(),
             Draw::DrawRect(_, _, m, _) => m.clone(),
+            Draw::ClipPath(_, _, m, _) => m.clone(),
         }
     }
 
@@ -23,6 +28,7 @@ impl Draw {
         match self {
             Draw::DrawPath(_, paint, _, _) => paint.clone(),
             Draw::DrawRect(_, paint, _, _) => paint.clone(),
+            Draw::ClipPath(_, _, _, _) => Paint::default(),
         }
     }
 
@@ -30,6 +36,22 @@ impl Draw {
         match self {
             Draw::DrawPath(_, _, _, depth) => *depth,
             Draw::DrawRect(_, _, _, depth) => *depth,
+            Draw::ClipPath(_, _, _, depth) => *depth,
+        }
+    }
+
+    pub(crate) fn set_depth(&mut self, depth: u32) {
+        match self {
+            Draw::DrawPath(_, _, _, d) => *d = depth,
+            Draw::DrawRect(_, _, _, d) => *d = depth,
+            Draw::ClipPath(_, _, _, d) => *d = depth,
+        }
+    }
+
+    pub(crate) fn clip_op(&self) -> Option<ClipOp> {
+        match self {
+            Draw::ClipPath(_, op, _, _) => Some(*op),
+            _ => None,
         }
     }
 }
@@ -37,12 +59,14 @@ impl Draw {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct State {
     pub(crate) transform: Matrix3x3,
+    pub(crate) clip_op: Vec<usize>,
 }
 
 impl Default for State {
     fn default() -> Self {
         State {
             transform: Matrix3x3::new(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+            clip_op: vec![],
         }
     }
 }
@@ -62,6 +86,10 @@ impl State {
 
     pub(crate) fn rotate_at<T: Angle>(&mut self, point: Point, value: T) {
         self.transform = self.transform.rotate_at(point, value);
+    }
+
+    pub(crate) fn save_clip(&mut self, index: usize) {
+        self.clip_op.push(index);
     }
 }
 
@@ -152,10 +180,40 @@ impl PictureRecorder {
                         self.current_depth + depth,
                     ));
                 }
+                Draw::ClipPath(path, op, m, depth) => {
+                    self.draws.push(Draw::ClipPath(
+                        path.clone(),
+                        *op,
+                        current_transform * m.clone(),
+                        self.current_depth + depth,
+                    ));
+                }
             }
         }
 
         self.current_depth += picture.draws.len() as u32;
+    }
+
+    /// Clip the current canvas.
+    /// The clip operation will be applied to the current clip state.
+    ///
+    /// # Arguments
+    /// * `path` - The path to clip.
+    /// * `op` - The clip operation.
+    pub fn clip<T: Into<Path>>(&mut self, path: T, op: ClipOp) {
+        self.draws.push(Draw::ClipPath(
+            path.into(),
+            op,
+            self.current_transform(),
+            0, // The value will be set when restore or finish recording
+        ));
+
+        let index = self.draws.len() - 1;
+
+        self.state
+            .last_mut()
+            .expect("The state stack is empty")
+            .save_clip(index);
     }
 
     /// Save the current state of the canvas.
@@ -171,7 +229,12 @@ impl PictureRecorder {
             return;
         }
 
-        self.state.pop();
+        let state = self.state.pop().expect("The state stack is empty");
+
+        for i in state.clip_op.iter().rev() {
+            self.current_depth += 1;
+            self.draws[*i].set_depth(self.current_depth);
+        }
     }
 
     /// Translate the current matrix. By x and y.
@@ -232,7 +295,16 @@ impl PictureRecorder {
     }
 
     /// Finish the recording and return the picture.
-    pub fn finish_recorder(self) -> Picture {
+    pub fn finish_recorder(mut self) -> Picture {
+        while self.state.len() > 1 {
+            self.restore();
+        }
+
+        let state = self.state.pop().expect("The state stack is empty");
+        for i in state.clip_op.iter().rev() {
+            self.draws[*i].set_depth(self.current_depth);
+        }
+
         Picture { draws: self.draws }
     }
 

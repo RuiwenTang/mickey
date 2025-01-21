@@ -1,6 +1,8 @@
 mod color_fragment;
 mod stencil_fragment;
 
+use std::marker::PhantomData;
+
 pub(crate) use color_fragment::*;
 pub(crate) use stencil_fragment::*;
 
@@ -49,6 +51,16 @@ pub(crate) struct StrokeStencil;
 
 /// Indicate to do stencil test by even-odd.
 pub(crate) struct EvenOddStencil;
+
+/// Indicate to do stencil test and write depth value for intersect clip.
+pub(crate) struct IntersectClip<T> {
+    _stencil: PhantomData<T>,
+}
+
+/// Indicate to do stencil test and write depth value for difference clip.
+pub(crate) struct DifferenceClip<T> {
+    _stencil: PhantomData<T>,
+}
 
 impl DepthStencilStateProvider for NoneStencil {
     fn stencil_state() -> wgpu::DepthStencilState {
@@ -172,5 +184,129 @@ impl DepthStencilStateProvider for StrokeStencil {
 
     fn name() -> &'static str {
         "stroke_stencil"
+    }
+}
+
+impl DepthStencilStateProvider for IntersectClip<NonZeroStencil> {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Equal,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Equal,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                read_mask: 0xff,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "intersect_clip_winding"
+    }
+}
+
+impl DepthStencilStateProvider for IntersectClip<EvenOddStencil> {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Equal,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Equal,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                read_mask: 0x01,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "intersect_clip_even_odd"
+    }
+}
+
+impl DepthStencilStateProvider for DifferenceClip<NonZeroStencil> {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                read_mask: 0xff,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "difference_clip_winding"
+    }
+}
+
+impl DepthStencilStateProvider for DifferenceClip<EvenOddStencil> {
+    fn stencil_state() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth24PlusStencil8,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Greater,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Replace,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                read_mask: 0x01,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        }
+    }
+
+    fn name() -> &'static str {
+        "difference_clip_even_odd"
     }
 }

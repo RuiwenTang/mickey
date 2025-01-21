@@ -4,6 +4,17 @@ mod picture;
 pub use paint::*;
 pub use picture::*;
 
+/// The clip operation describes how to apply a clip to a path.
+/// The default value is [`ClipOp::Intersect`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ClipOp {
+    /// The intersect clip operation will draw only the parts of the path that are inside the clip.
+    #[default]
+    Intersect,
+    /// The difference clip operation will draw only the parts of the path that are outside the clip.
+    Difference,
+}
+
 /// The stroke cap describes the start and end of a stroke.
 /// The default value is StrokeCap::Butt.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

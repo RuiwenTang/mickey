@@ -1,7 +1,11 @@
-use crate::{Color, Command, Mesh, PositionChunk, Renderer, ShapeGeometry, StageBuffer};
+use crate::{
+    ClipOp, Color, Command, Matrix3x3, Mesh, PositionChunk, Rect, Renderer, ShapeGeometry,
+    StageBuffer,
+};
 
 use super::{
     BWStencilMask, ColorFragment, DepthStencilStateProvider, RenderContext, StencilFragment,
+    raster::{Raster, RectFillRaster},
 };
 
 pub(crate) trait StencilStep {
@@ -87,5 +91,37 @@ impl ColorStep for Content<Color> {
         let renderer = Renderer::new(self.format, self.sample_count, geom, frag);
 
         renderer.render(mesh, buffer, context, device, queue)
+    }
+}
+
+impl ColorStep for Content<(Rect, ClipOp)> {
+    fn render_color<S: DepthStencilStateProvider>(
+        &self,
+        mesh: Mesh,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Command {
+        match self.color.1 {
+            ClipOp::Intersect => {
+                let rect_raster = RectFillRaster::new(self.color.0);
+                let mesh = rect_raster.do_raster(&Matrix3x3::default(), buffer);
+
+                let pos_chunk =
+                    PositionChunk::new(self.color.0, Matrix3x3::default(), self.pos_chunk.info());
+                let geom = ShapeGeometry::new(pos_chunk);
+                let frag = StencilFragment::<S>::new();
+                let renderer = Renderer::new(self.format, self.sample_count, geom, frag);
+
+                renderer.render(mesh, buffer, context, device, queue)
+            }
+            ClipOp::Difference => {
+                let geom = ShapeGeometry::new(self.pos_chunk);
+                let frag = StencilFragment::<S>::new();
+                let renderer = Renderer::new(self.format, self.sample_count, geom, frag);
+                renderer.render(mesh, buffer, context, device, queue)
+            }
+        }
     }
 }
