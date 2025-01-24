@@ -116,11 +116,11 @@ impl PictureRecorder {
     /// # Arguments
     /// * `path` - The path to draw.
     /// * `paint` - The paint to draw the path.
-    pub fn draw_path(&mut self, path: Path, paint: Paint) {
+    pub fn draw_path(&mut self, path: Path, paint: &Paint) {
         self.current_depth += 1;
         self.draws.push(Draw::DrawPath(
             path,
-            paint,
+            paint.clone(),
             self.current_transform(),
             self.current_depth,
         ));
@@ -132,11 +132,11 @@ impl PictureRecorder {
     /// # Arguments
     /// * `rect` - The rect to draw.
     /// * `paint` - The paint to draw the rect.
-    pub fn draw_rect(&mut self, rect: Rect, paint: Paint) {
+    pub fn draw_rect(&mut self, rect: Rect, paint: &Paint) {
         self.current_depth += 1;
         self.draws.push(Draw::DrawRect(
             rect,
-            paint,
+            paint.clone(),
             self.current_transform(),
             self.current_depth,
         ));
@@ -149,7 +149,7 @@ impl PictureRecorder {
     /// * `center` - The center of the circle.
     /// * `radius` - The radius of the circle.
     /// * `paint` - The paint to draw the circle.
-    pub fn draw_circle<T: Into<Point>>(&mut self, center: T, radius: f32, paint: Paint) {
+    pub fn draw_circle<T: Into<Point>>(&mut self, center: T, radius: f32, paint: &Paint) {
         let path = Path::new().add_circle(center.into(), radius);
         self.draw_path(path, paint);
     }

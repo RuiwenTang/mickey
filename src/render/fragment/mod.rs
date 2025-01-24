@@ -1,9 +1,11 @@
 mod color_fragment;
+mod gradient_fragment;
 mod stencil_fragment;
 
 use std::marker::PhantomData;
 
 pub(crate) use color_fragment::*;
+pub(crate) use gradient_fragment::*;
 pub(crate) use stencil_fragment::*;
 
 use super::Group;

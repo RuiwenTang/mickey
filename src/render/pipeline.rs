@@ -13,7 +13,6 @@ pub(crate) struct PipelineKey {
 impl PipelineKey {
     pub(crate) fn create_pipeline(
         &self,
-        label: &String,
         device: &wgpu::Device,
         vs: &wgpu::ShaderModule,
         fs: &wgpu::ShaderModule,
@@ -21,8 +20,6 @@ impl PipelineKey {
         attribute: &[wgpu::VertexAttribute],
         attr_stride: wgpu::BufferAddress,
     ) -> Rc<wgpu::RenderPipeline> {
-        let pipeline_label = format!("{}-{}", label, self.label);
-
         let attachments = [Some(wgpu::ColorTargetState {
             format: self.format,
             blend: self.blend,
@@ -34,7 +31,7 @@ impl PipelineKey {
         })];
 
         let desc = wgpu::RenderPipelineDescriptor {
-            label: Some(&pipeline_label),
+            label: Some(&self.label),
             layout: Some(layout),
             cache: None,
             vertex: wgpu::VertexState {
@@ -113,13 +110,17 @@ impl Pipeline {
         key: &PipelineKey,
         device: &wgpu::Device,
     ) -> Option<Rc<wgpu::RenderPipeline>> {
+        assert!(
+            key.label.contains(self.label.as_str()),
+            "pipeline label mismatch"
+        );
+
         if self.pipelines.contains_key(key) {
             return self.pipelines.get(key).cloned();
         }
 
         // create pipeline based on the key
         let pipeline = key.create_pipeline(
-            &self.label,
             device,
             &self.vs,
             &self.fs,

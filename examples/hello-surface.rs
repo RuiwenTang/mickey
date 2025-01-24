@@ -30,7 +30,7 @@ impl common::Renderer for HelloSurface {
         let mut paint = Paint::default().with_color(Color::red());
         let rect = Rect::new_xywh(100.0, 100.0, 100.0, 100.0);
 
-        recorder.draw_rect(rect, paint);
+        recorder.draw_rect(rect, &paint);
 
         paint.set_color(Color::blue().with_alpha(0.3));
 
@@ -41,7 +41,7 @@ impl common::Renderer for HelloSurface {
 
         paint.set_style(Stroke::default().with_width(10.0));
 
-        recorder.draw_rect(rect, paint);
+        recorder.draw_rect(rect, &paint);
 
         recorder.restore();
 
@@ -54,18 +54,18 @@ impl common::Renderer for HelloSurface {
             .line_to((160.0, 180.0))
             .close_path();
 
-        paint.color = Color::green().with_alpha(0.5);
+        paint.set_color(Color::green().with_alpha(0.5));
         paint.set_style(Style::Fill);
 
         recorder.save();
         recorder.translate(300.0, 0.0);
 
-        recorder.draw_path(path, paint);
+        recorder.draw_path(path, &paint);
 
-        recorder.draw_circle((300.0, 300.0), 100.0, paint);
+        recorder.draw_circle((300.0, 300.0), 100.0, &paint);
         recorder.restore();
 
-        paint.color = Color::red().with_alpha(0.5);
+        paint.set_color(Color::red().with_alpha(0.5));
 
         paint.set_style(
             Stroke::default()
@@ -82,7 +82,7 @@ impl common::Renderer for HelloSurface {
                 .quad_to((256.0, 64.0), (128.0, 128.0))
                 .quad_to((10.0, 192.0), (250.0, 250.0))
                 .close_path(),
-            paint,
+            &paint,
         );
         recorder.restore();
 
@@ -97,7 +97,7 @@ impl common::Renderer for HelloSurface {
             recorder.save();
             recorder.clip(path.clone(), Default::default());
 
-            recorder.draw_circle((70.0, 85.0), 60.0, Paint::default());
+            recorder.draw_circle((70.0, 85.0), 60.0, &Paint::default());
             recorder.restore();
 
             recorder.translate(100.0, 100.0);
@@ -106,8 +106,21 @@ impl common::Renderer for HelloSurface {
                 path.clone().with_fill_rule(FillRule::EvenOdd),
                 ClipOp::Difference,
             );
-            recorder.draw_circle((70.0, 85.0), 60.0, Paint::default());
+            recorder.draw_circle((70.0, 85.0), 60.0, &Paint::default());
 
+            recorder.restore();
+        }
+
+        {
+            recorder.save();
+            recorder.translate(100.0, 400.0);
+            let mut paint = Paint::default();
+            paint.set_color(RadialGradient::new(Point::new(220.0, 350.0), 150.0, vec![
+                Color::white(),
+                Color::black(),
+            ]));
+
+            recorder.draw_circle((220.0, 350.0), 100.0, &paint);
             recorder.restore();
         }
 

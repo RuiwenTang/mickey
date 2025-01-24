@@ -1,6 +1,10 @@
+mod color;
+mod gradient;
 mod paint;
 mod picture;
 
+pub use color::*;
+pub use gradient::*;
 pub use paint::*;
 pub use picture::*;
 

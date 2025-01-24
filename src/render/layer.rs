@@ -1,4 +1,4 @@
-use crate::{ClipOp, Color, Draw, Rect};
+use crate::{ClipOp, Color, Draw, PaintColor, Rect};
 
 use super::{
     ColorStep, Command, Content, DifferenceClip, EvenOddStencil, IntersectClip, Mesh, MeshType,
@@ -191,27 +191,75 @@ impl<'a> Layer<'a> {
                     );
                 }
                 None => {
-                    let content = Content::new(
-                        paint.color,
-                        self.target_format(),
-                        self.sample_count,
-                        PositionChunk::new(self.view_port, cmd.transform(), [
-                            cmd.depth() as f32 / total_depth,
-                            0.0,
-                            0.0,
-                            0.0,
-                        ]),
-                    );
+                    match paint.color {
+                        PaintColor::Color(color) => {
+                            let content = Content::new(
+                                color,
+                                self.target_format(),
+                                self.sample_count,
+                                PositionChunk::new(self.view_port, cmd.transform(), [
+                                    cmd.depth() as f32 / total_depth,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                ]),
+                            );
+                            render_content(
+                                &content,
+                                mesh,
+                                buffer,
+                                context,
+                                device,
+                                queue,
+                                &mut commands,
+                            );
+                        }
+                        PaintColor::LinearGradient(gradient) => {
+                            let content = Content::new(
+                                gradient,
+                                self.target_format(),
+                                self.sample_count,
+                                PositionChunk::new(self.view_port, cmd.transform(), [
+                                    cmd.depth() as f32 / total_depth,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                ]),
+                            );
 
-                    render_content(
-                        &content,
-                        mesh,
-                        buffer,
-                        context,
-                        device,
-                        queue,
-                        &mut commands,
-                    );
+                            render_content(
+                                &content,
+                                mesh,
+                                buffer,
+                                context,
+                                device,
+                                queue,
+                                &mut commands,
+                            );
+                        }
+                        PaintColor::RadialGradient(gradient) => {
+                            let content = Content::new(
+                                gradient,
+                                self.target_format(),
+                                self.sample_count,
+                                PositionChunk::new(self.view_port, cmd.transform(), [
+                                    cmd.depth() as f32 / total_depth,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                ]),
+                            );
+                            render_content(
+                                &content,
+                                mesh,
+                                buffer,
+                                context,
+                                device,
+                                queue,
+                                &mut commands,
+                            );
+                        }
+                    };
                 }
             }
         }
