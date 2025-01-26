@@ -106,6 +106,30 @@ impl Rect {
 
         self
     }
+
+    /// Union the Rect with another Rect.
+    /// The resulting Rect will be the smallest Rect that contains both Rects.
+    ///
+    /// # Arguments
+    /// * `other` - The other Rect to union with.
+    pub fn union(&mut self, other: &Rect) {
+        if other.is_empty() {
+            return;
+        }
+
+        if self.is_empty() {
+            self.left = other.left;
+            self.right = other.right;
+            self.top = other.top;
+            self.bottom = other.bottom;
+            return;
+        }
+
+        self.left = self.left.min(other.left);
+        self.right = self.right.max(other.right);
+        self.top = self.top.min(other.top);
+        self.bottom = self.bottom.max(other.bottom);
+    }
 }
 
 /// Convert the Rect into mvp matrix.

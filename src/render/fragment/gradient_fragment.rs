@@ -11,7 +11,7 @@ use crate::{
 ///   struct GradientInfo {
 ///       colors : array<vec4<f32>, N>,
 ///       stops  : array<f32, N / 4>,
-///       infos  : vec4<f32>, // [alpha, TBD, TBD, TBD]
+///       infos  : vec4<f32>, // [color_count, stop_count, alpha, TBD]
 ///   }
 /// ```
 ///
@@ -19,7 +19,7 @@ use crate::{
 /// ```wgsl
 ///   struct GradientInfo {
 ///       colors : array<vec4<f32>, N>,
-///       infos  : vec4<f32>, // [alpha, TBD, TBD, TBD]
+///       infos  : vec4<f32>, // [color_count, TBD, alpha, TBD]
 ///   }
 /// ```
 pub(crate) struct CommonGradient {
@@ -232,7 +232,7 @@ impl CommonGradient {
             } else {
                 infos.push(gradient.stops.as_ref().unwrap().len() as f32);
             }
-            infos.push(1.0);
+            infos.push(gradient.alpha);
             infos.push(0.0);
             stage_buffer.extend_from_slice(bytemuck::cast_slice(infos.as_slice()));
         }

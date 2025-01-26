@@ -1,10 +1,13 @@
-use crate::{Color, LinearGradient, RadialGradient, Style};
+use std::rc::Rc;
+
+use crate::{Color, Image, LinearGradient, RadialGradient, Rect, Style};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PaintColor {
     Color(Color),
     LinearGradient(LinearGradient),
     RadialGradient(RadialGradient),
+    Image(Rc<Image>, f32, Rect),
 }
 
 /// The paint describes the style and color when drawing a geometry.
@@ -38,7 +41,7 @@ impl Paint {
     ///
     /// # Arguments
     ///
-    /// * `style` - The style of the paint.
+    /// * `style` - The style [`Style`] of the paint.
     ///
     /// # Returns
     ///
@@ -64,5 +67,16 @@ impl Paint {
 impl Default for PaintColor {
     fn default() -> Self {
         PaintColor::Color(Color::black())
+    }
+}
+
+impl PaintColor {
+    pub fn set_alpha(&mut self, alpha: f32) {
+        match self {
+            PaintColor::Color(color) => color.a = alpha,
+            PaintColor::LinearGradient(gradient) => gradient.set_alpha(alpha),
+            PaintColor::RadialGradient(gradient) => gradient.set_alpha(alpha),
+            PaintColor::Image(_, a, _) => *a = alpha,
+        }
     }
 }

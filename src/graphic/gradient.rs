@@ -9,6 +9,8 @@ pub struct Gradient {
     pub stops: Option<Vec<f32>>,
     /// local matrix of the gradient, default is identity matrix
     pub local_matrix: Matrix3x3,
+    /// alpha of the gradient, default is 1.0
+    pub alpha: f32,
 }
 
 /// Represent a linear gradient between two specified points
@@ -28,7 +30,23 @@ pub struct RadialGradient {
 }
 
 impl Gradient {
-    pub fn new(colors: Vec<Color>, stops: Option<Vec<f32>>, local_matrix: Matrix3x3) -> Self {
+    /// Create a new gradient with the given colors, optional stops and local matrix
+    ///
+    /// # Arguments
+    /// * `colors` - The colors of the gradient
+    /// * `stops` - The optional stops of the gradient
+    /// * `local_matrix` - The local matrix of the gradient
+    /// * `alpha` - The alpha of the gradient, default is 1.0, must in range [0.0, 1.0], the code don't check the range of alpha. If value is not in range [0.0, 1.0], the behavior is undefined.
+    ///
+    /// # Panics
+    /// * `colors.len() < 2` - The colors len must greater than 2
+    /// * `stops.is_some() && stops.len() != colors.len()` - The stops is set, the len must equal to colors len
+    pub fn new(
+        colors: Vec<Color>,
+        stops: Option<Vec<f32>>,
+        local_matrix: Matrix3x3,
+        alpha: f32,
+    ) -> Self {
         if colors.len() < 2 {
             panic!("colors len must greater than 2");
         }
@@ -43,6 +61,7 @@ impl Gradient {
             colors,
             stops,
             local_matrix,
+            alpha,
         }
     }
 
@@ -67,25 +86,25 @@ impl Gradient {
 
 impl Into<Gradient> for Vec<Color> {
     fn into(self) -> Gradient {
-        Gradient::new(self, None, Matrix3x3::default())
+        Gradient::new(self, None, Matrix3x3::default(), 1.0)
     }
 }
 
 impl Into<Gradient> for (Vec<Color>, Vec<f32>) {
     fn into(self) -> Gradient {
-        Gradient::new(self.0, Some(self.1), Matrix3x3::default())
+        Gradient::new(self.0, Some(self.1), Matrix3x3::default(), 1.0)
     }
 }
 
 impl Into<Gradient> for (Vec<Color>, Matrix3x3) {
     fn into(self) -> Gradient {
-        Gradient::new(self.0, None, self.1)
+        Gradient::new(self.0, None, self.1, 1.0)
     }
 }
 
 impl Into<Gradient> for (Vec<Color>, Vec<f32>, Matrix3x3) {
     fn into(self) -> Gradient {
-        Gradient::new(self.0, Some(self.1), self.2)
+        Gradient::new(self.0, Some(self.1), self.2, 1.0)
     }
 }
 
@@ -96,6 +115,10 @@ impl LinearGradient {
             end,
             gradient: gradient.into(),
         }
+    }
+
+    pub fn set_alpha(&mut self, alpha: f32) {
+        self.gradient.alpha = alpha;
     }
 }
 
@@ -118,6 +141,10 @@ impl RadialGradient {
             radius,
             gradient: gradient.into(),
         }
+    }
+
+    pub fn set_alpha(&mut self, alpha: f32) {
+        self.gradient.alpha = alpha;
     }
 }
 

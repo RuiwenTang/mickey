@@ -1,4 +1,4 @@
-use crate::{ClipOp, Color, Draw, PaintColor, Rect};
+use crate::{ClipOp, Color, Draw, LinearGradient, Matrix3x3, PaintColor, RadialGradient, Rect};
 
 use super::{
     ColorStep, Command, Content, DifferenceClip, EvenOddStencil, IntersectClip, Mesh, MeshType,
@@ -158,108 +158,67 @@ impl<'a> Layer<'a> {
 
         for cmd in self.draws {
             let raster = cmd.gen_raster();
-
             let mesh = raster.do_raster(&cmd.transform(), buffer);
-
             let paint = cmd.paint();
-
             let clip_op = cmd.clip_op();
 
-            match clip_op {
-                Some(op) => {
-                    let content = Content::new(
-                        (self.view_port, op),
-                        self.target_format(),
-                        self.sample_count,
-                        PositionChunk::new(self.view_port, cmd.transform(), [
-                            cmd.depth() as f32 / total_depth,
-                            0.0,
-                            0.0,
-                            0.0,
-                        ]),
-                    );
+            let depth = cmd.depth() as f32 / total_depth;
+            let transform = cmd.transform();
 
-                    clip_content(
-                        &content,
-                        op,
-                        mesh,
-                        buffer,
-                        context,
-                        device,
-                        queue,
-                        &mut commands,
-                    );
-                }
-                None => {
-                    match paint.color {
-                        PaintColor::Color(color) => {
-                            let content = Content::new(
-                                color,
-                                self.target_format(),
-                                self.sample_count,
-                                PositionChunk::new(self.view_port, cmd.transform(), [
-                                    cmd.depth() as f32 / total_depth,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                ]),
-                            );
-                            render_content(
-                                &content,
-                                mesh,
-                                buffer,
-                                context,
-                                device,
-                                queue,
-                                &mut commands,
-                            );
-                        }
-                        PaintColor::LinearGradient(gradient) => {
-                            let content = Content::new(
-                                gradient,
-                                self.target_format(),
-                                self.sample_count,
-                                PositionChunk::new(self.view_port, cmd.transform(), [
-                                    cmd.depth() as f32 / total_depth,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                ]),
-                            );
-
-                            render_content(
-                                &content,
-                                mesh,
-                                buffer,
-                                context,
-                                device,
-                                queue,
-                                &mut commands,
-                            );
-                        }
-                        PaintColor::RadialGradient(gradient) => {
-                            let content = Content::new(
-                                gradient,
-                                self.target_format(),
-                                self.sample_count,
-                                PositionChunk::new(self.view_port, cmd.transform(), [
-                                    cmd.depth() as f32 / total_depth,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                ]),
-                            );
-                            render_content(
-                                &content,
-                                mesh,
-                                buffer,
-                                context,
-                                device,
-                                queue,
-                                &mut commands,
-                            );
-                        }
-                    };
+            if let Some(op) = clip_op {
+                self.clip_content(
+                    op,
+                    mesh,
+                    transform,
+                    depth,
+                    buffer,
+                    context,
+                    device,
+                    queue,
+                    &mut commands,
+                );
+            } else {
+                match paint.color {
+                    PaintColor::Color(color) => {
+                        self.color_content(
+                            color,
+                            mesh,
+                            transform,
+                            depth,
+                            buffer,
+                            context,
+                            device,
+                            queue,
+                            &mut commands,
+                        );
+                    }
+                    PaintColor::LinearGradient(gradient) => {
+                        self.linear_gradient_content(
+                            gradient,
+                            mesh,
+                            transform,
+                            depth,
+                            buffer,
+                            context,
+                            device,
+                            queue,
+                            &mut commands,
+                        );
+                    }
+                    PaintColor::RadialGradient(gradient) => {
+                        self.radial_gradient_content(
+                            gradient,
+                            mesh,
+                            transform,
+                            depth,
+                            buffer,
+                            context,
+                            device,
+                            queue,
+                            &mut commands,
+                        );
+                    }
+                    PaintColor::Image(_, _, _) => todo!("image rendering"),
                 }
             }
         }
@@ -402,5 +361,92 @@ impl<'a> Layer<'a> {
                 occlusion_query_set: None,
             });
         }
+    }
+
+    fn clip_content(
+        &self,
+        op: ClipOp,
+        mesh: Mesh,
+        transform: Matrix3x3,
+        depth: f32,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        pass: &mut Vec<Command>,
+    ) {
+        let content = Content::new(
+            (self.view_port, op),
+            self.target_format(),
+            self.sample_count,
+            PositionChunk::new(self.view_port, transform, [depth, 0.0, 0.0, 0.0]),
+        );
+
+        clip_content(&content, op, mesh, buffer, context, device, queue, pass);
+    }
+
+    fn color_content(
+        &self,
+        color: Color,
+        mesh: Mesh,
+        transform: Matrix3x3,
+        depth: f32,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        pass: &mut Vec<Command>,
+    ) {
+        let content = Content::new(
+            color,
+            self.target_format(),
+            self.sample_count,
+            PositionChunk::new(self.view_port, transform, [depth, 0.0, 0.0, 0.0]),
+        );
+        render_content(&content, mesh, buffer, context, device, queue, pass);
+    }
+
+    fn linear_gradient_content(
+        &self,
+        gradient: LinearGradient,
+        mesh: Mesh,
+        transform: Matrix3x3,
+        depth: f32,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        pass: &mut Vec<Command>,
+    ) {
+        let content = Content::new(
+            gradient,
+            self.target_format(),
+            self.sample_count,
+            PositionChunk::new(self.view_port, transform, [depth, 0.0, 0.0, 0.0]),
+        );
+
+        render_content(&content, mesh, buffer, context, device, queue, pass);
+    }
+
+    fn radial_gradient_content(
+        &self,
+        gradient: RadialGradient,
+        mesh: Mesh,
+        transform: Matrix3x3,
+        depth: f32,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        pass: &mut Vec<Command>,
+    ) {
+        let content = Content::new(
+            gradient,
+            self.target_format(),
+            self.sample_count,
+            PositionChunk::new(self.view_port, transform, [depth, 0.0, 0.0, 0.0]),
+        );
+
+        render_content(&content, mesh, buffer, context, device, queue, pass);
     }
 }

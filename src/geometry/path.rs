@@ -424,6 +424,14 @@ impl Path {
         self
     }
 
+    pub fn get_bounds(&self) -> Rect {
+        let mut bounds = Rect::default();
+
+        for verb in &self.verbs {}
+
+        return bounds;
+    }
+
     fn inject_move_to_if_needed(&mut self) {
         if self.last_move_to_index.is_none() {
             self.verbs.push(PathVerb::MoveTo(Point::new(0.0, 0.0)));
