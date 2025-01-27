@@ -1,7 +1,10 @@
 mod common;
 
+use std::rc::Rc;
+
 use common::App;
 
+use image::ImageReader;
 use mickey::*;
 
 struct HelloSurface {
@@ -22,9 +25,27 @@ impl common::Renderer for HelloSurface {
     fn on_init(
         &mut self,
         _format: wgpu::TextureFormat,
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
     ) {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let p = format!("{}/examples/assets/mandrill.png", manifest_dir);
+
+        let img = ImageReader::open(p).unwrap().decode().unwrap().into_rgba8();
+
+        let image = Rc::new(Image::create_image(
+            img.as_raw(),
+            &ImageInfo {
+                width: img.width(),
+                height: img.height(),
+                format: ImageFormat::RGBA8888,
+                premultiplied: true,
+            },
+            img.width() * 4,
+            device,
+            queue,
+        ));
+
         let mut recorder = PictureRecorder::new();
 
         let mut paint = Paint::default().with_color(Color::red());
@@ -121,6 +142,16 @@ impl common::Renderer for HelloSurface {
             ]));
 
             recorder.draw_circle((220.0, 350.0), 100.0, &paint);
+            recorder.restore();
+        }
+
+        {
+            recorder.save();
+            recorder.translate(500.0, 400.0);
+            let mut paint = Paint::default();
+            paint.set_color(image);
+
+            recorder.draw_rect(Rect::new_xywh(0.0, 0.0, 300.0, 300.0), &paint);
             recorder.restore();
         }
 

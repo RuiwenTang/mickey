@@ -218,7 +218,36 @@ impl<'a> Layer<'a> {
                             &mut commands,
                         );
                     }
-                    PaintColor::Image(_, _, _) => todo!("image rendering"),
+                    PaintColor::Image(img, alpha, src_rect) => {
+                        let dst_rect = cmd.get_bounds();
+
+                        let matrix = Matrix3x3::default()
+                            .translate(dst_rect.left(), dst_rect.top())
+                            * Matrix3x3::default().scale(
+                                dst_rect.width() / src_rect.width(),
+                                dst_rect.height() / src_rect.height(),
+                            )
+                            * Matrix3x3::default().translate(-src_rect.left(), -src_rect.top());
+
+                        let sampler = context.get_sampler(device);
+
+                        let content = Content::new(
+                            (img.clone(), sampler, matrix, alpha),
+                            self.target_format(),
+                            self.sample_count,
+                            PositionChunk::new(self.view_port, transform, [depth, 0.0, 0.0, 0.0]),
+                        );
+
+                        render_content(
+                            &content,
+                            mesh,
+                            buffer,
+                            context,
+                            device,
+                            queue,
+                            &mut commands,
+                        );
+                    }
                 }
             }
         }

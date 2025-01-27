@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use crate::{
-    ClipOp, Color, Command, LinearGradient, Matrix3x3, Mesh, PositionChunk, RadialGradient, Rect,
-    Renderer, ShapeGeometry, StageBuffer,
+    ClipOp, Color, Command, Image, ImageFragment, ImageGeometry, LinearGradient, Matrix3x3, Mesh,
+    PositionChunk, RadialGradient, Rect, Renderer, ShapeGeometry, StageBuffer,
 };
 
 use super::{
@@ -158,6 +160,35 @@ impl ColorStep for Content<RadialGradient> {
         let frag = RadialGradientFragment::<S>::new(self.color.clone());
 
         let renderer = Renderer::new(self.format, self.sample_count, geom, frag);
+        renderer.render(mesh, buffer, context, device, queue)
+    }
+}
+
+impl ColorStep for Content<(Rc<Image>, Rc<wgpu::Sampler>, Matrix3x3, f32)> {
+    fn render_color<S: DepthStencilStateProvider>(
+        &self,
+        mesh: Mesh,
+        buffer: &mut StageBuffer,
+        context: &mut RenderContext,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Command {
+        let geom = ImageGeometry::new(
+            self.pos_chunk,
+            self.color.2,
+            self.color.0.get_width() as f32,
+            self.color.0.get_height() as f32,
+        );
+
+        let frag = ImageFragment::<S>::new(
+            self.color.0.clone(),
+            self.color.1.clone(),
+            self.color.3,
+            self.color.0.premultiplied(),
+        );
+
+        let renderer = Renderer::new(self.format, self.sample_count, geom, frag);
+
         renderer.render(mesh, buffer, context, device, queue)
     }
 }

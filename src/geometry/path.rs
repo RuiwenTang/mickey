@@ -425,11 +425,48 @@ impl Path {
     }
 
     pub fn get_bounds(&self) -> Rect {
-        let mut bounds = Rect::default();
+        let mut left = f32::MAX;
+        let mut top = f32::MAX;
+        let mut right = f32::MIN;
+        let mut bottom = f32::MIN;
 
-        for verb in &self.verbs {}
+        for verb in &self.verbs {
+            match verb {
+                PathVerb::MoveTo(p) => {
+                    left = left.min(p.x);
+                    top = top.min(p.y);
+                    right = right.max(p.x);
+                    bottom = bottom.max(p.y);
+                }
+                PathVerb::LineTo(p) => {
+                    left = left.min(p.x);
+                    top = top.min(p.y);
+                    right = right.max(p.x);
+                    bottom = bottom.max(p.y);
+                }
+                PathVerb::QuadTo(p1, p2) => {
+                    left = left.min(p1.x).min(p2.x);
+                    top = top.min(p1.y).min(p2.y);
+                    right = right.max(p1.x).max(p2.x);
+                    bottom = bottom.max(p1.y).max(p2.y);
+                }
+                PathVerb::CubicTo(p1, p2, p3) => {
+                    left = left.min(p1.x).min(p2.x).min(p3.x);
+                    top = top.min(p1.y).min(p2.y).min(p3.y);
+                    right = right.max(p1.x).max(p2.x).max(p3.x);
+                    bottom = bottom.max(p1.y).max(p2.y).max(p3.y);
+                }
+                PathVerb::ConicTo(p1, p2, _) => {
+                    left = left.min(p1.x).min(p2.x);
+                    top = top.min(p1.y).min(p2.y);
+                    right = right.max(p1.x).max(p2.x);
+                    bottom = bottom.max(p1.y).max(p2.y);
+                }
+                PathVerb::ClosePath => {}
+            }
+        }
 
-        return bounds;
+        return Rect::new_ltrb(left, top, right, bottom);
     }
 
     fn inject_move_to_if_needed(&mut self) {

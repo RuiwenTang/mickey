@@ -19,7 +19,7 @@ impl Uniform {
             Uniform::Buffer(buffer_view, binding) => wgpu::BindGroupEntry {
                 binding: *binding,
                 resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                    buffer: buffer,
+                    buffer,
                     offset: buffer_view.offset as wgpu::BufferAddress,
                     size: NonZeroU64::new(buffer_view.size as u64),
                 }),

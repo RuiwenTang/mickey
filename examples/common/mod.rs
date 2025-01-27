@@ -45,9 +45,11 @@ impl<'a, T: Renderer> App<'a, T> {
         let surface = instance.create_surface(&window).unwrap();
 
         let size = window.inner_size();
-        let config = surface
+        let mut config = surface
             .get_default_config(&adapter, size.width, size.height)
             .unwrap();
+
+        config.format = wgpu::TextureFormat::Bgra8Unorm;
 
         surface.configure(&device, &config);
 

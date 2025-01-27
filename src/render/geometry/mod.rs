@@ -1,5 +1,7 @@
+mod image_geometry;
 mod shape_geometry;
 
+pub(crate) use image_geometry::*;
 pub(crate) use shape_geometry::*;
 
 use crate::{Group, StageBuffer};

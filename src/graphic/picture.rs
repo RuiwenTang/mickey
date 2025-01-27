@@ -54,6 +54,14 @@ impl Draw {
             _ => None,
         }
     }
+
+    pub(crate) fn get_bounds(&self) -> Rect {
+        match self {
+            Draw::DrawPath(path, _, _, _) => path.get_bounds(),
+            Draw::DrawRect(rect, _, _, _) => rect.clone(),
+            Draw::ClipPath(path, _, _, _) => path.get_bounds(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
