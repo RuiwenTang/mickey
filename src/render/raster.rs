@@ -1,9 +1,6 @@
 use nalgebra::Vector2;
 
-use crate::{
-    Contour, Draw, FillRule, Matrix3x3, Mesh, MeshType, Path, Point, PolylineBuilder, Rect,
-    StageBuffer, StrokeCap, StrokeJoin, Style, circle_interpolation, cross_product, distance,
-};
+use crate::*;
 
 pub(crate) trait Raster {
     fn do_raster(&self, transform: &Matrix3x3, buffer: &mut StageBuffer) -> Mesh;

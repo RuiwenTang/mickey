@@ -1,9 +1,6 @@
 use std::num::NonZero;
 
-use crate::{
-    DepthStencilStateProvider, Fragment, Gradient, Group, LinearGradient, RadialGradient,
-    ShaderGenerator, StageBuffer, Uniform,
-};
+use crate::*;
 
 /// Common shader and upload logical for all gradient fragment.
 /// It contains the struct for common gradient info:

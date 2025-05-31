@@ -18,17 +18,19 @@ pub trait Renderer {
 }
 
 pub struct App<'a, T: Renderer> {
+    adapter: &'a wgpu::Adapter,
+    instance: &'a wgpu::Instance,
     device: &'a wgpu::Device,
     queue: &'a wgpu::Queue,
-    surface: &'a wgpu::Surface<'a>,
-    _format: wgpu::TextureFormat,
-    window: &'a Window,
+    wa: WindowAttributes,
+    window: Option<Window>,
+    surface: Option<wgpu::Surface<'a>>,
 
     renderer: T,
 }
 
 impl<'a, T: Renderer> App<'a, T> {
-    pub fn run(title: &'static str, width: u32, height: u32, mut renderer: T) {
+    pub fn run(title: &'static str, width: u32, height: u32, renderer: T) {
         let el = EventLoop::builder()
             .build()
             .expect("event loop creation failed");
@@ -36,31 +38,19 @@ impl<'a, T: Renderer> App<'a, T> {
         let wa = WindowAttributes::default()
             .with_title(title)
             .with_inner_size(LogicalSize::new(width, height));
-        let window = el.create_window(wa).expect("window creation failed");
 
         let instance = wgpu::Instance::default();
 
         let (adapter, device, queue) = App::<T>::request_device_and_queue(&instance);
 
-        let surface = instance.create_surface(&window).unwrap();
-
-        let size = window.inner_size();
-        let mut config = surface
-            .get_default_config(&adapter, size.width, size.height)
-            .unwrap();
-
-        config.format = wgpu::TextureFormat::Bgra8Unorm;
-
-        surface.configure(&device, &config);
-
-        renderer.on_init(config.format, &device, &queue);
-
         let mut app = App {
+            adapter: &adapter,
+            instance: &instance,
             device: &device,
             queue: &queue,
-            surface: &surface,
-            _format: config.format,
-            window: &window,
+            surface: None,
+            wa,
+            window: None,
             renderer,
         };
 
@@ -94,12 +84,47 @@ impl<'a, T: Renderer> App<'a, T> {
     }
 
     pub fn request_redraw(&self) {
-        self.window.request_redraw();
+        self.window
+            .as_ref()
+            .expect("window not created")
+            .request_redraw();
     }
 }
 
 impl<'a, T: Renderer> ApplicationHandler for App<'a, T> {
-    fn resumed(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {}
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        self.window = Some(event_loop.create_window(self.wa.clone()).unwrap());
+
+        let size = self
+            .window
+            .as_ref()
+            .expect("window not created")
+            .inner_size();
+
+        let surface = unsafe {
+            self.instance
+                .create_surface_unsafe(
+                    wgpu::SurfaceTargetUnsafe::from_window(
+                        self.window.as_ref().expect("window not created"),
+                    )
+                    .expect("failed create surface target"),
+                )
+                .expect("failed to create surface")
+        };
+
+        let mut config = surface
+            .get_default_config(self.adapter, size.width, size.height)
+            .unwrap();
+
+        config.format = wgpu::TextureFormat::Bgra8Unorm;
+
+        surface.configure(self.device, &config);
+
+        self.surface = Some(surface);
+
+        self.renderer
+            .on_init(config.format, self.device, self.queue);
+    }
 
     fn window_event(
         &mut self,
@@ -112,7 +137,12 @@ impl<'a, T: Renderer> ApplicationHandler for App<'a, T> {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                let texture = self.surface.get_current_texture().unwrap();
+                let texture = self
+                    .surface
+                    .as_ref()
+                    .expect("surface not init")
+                    .get_current_texture()
+                    .unwrap();
 
                 let redraw = self
                     .renderer

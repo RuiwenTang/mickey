@@ -1,15 +1,7 @@
 use std::rc::Rc;
 
-use crate::{
-    ClipOp, Color, Command, Image, ImageFragment, ImageGeometry, LinearGradient, Matrix3x3, Mesh,
-    PositionChunk, RadialGradient, Rect, Renderer, ShapeGeometry, StageBuffer,
-};
-
-use super::{
-    BWStencilMask, ColorFragment, DepthStencilStateProvider, LinearGradientFragment,
-    RadialGradientFragment, RenderContext, ShapeMatrixGeometry, StencilFragment,
-    raster::{Raster, RectFillRaster},
-};
+use crate::render::raster::*;
+use crate::*;
 
 pub(crate) trait StencilStep {
     fn render_stencil(

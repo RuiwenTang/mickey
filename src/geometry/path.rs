@@ -258,10 +258,14 @@ impl Path {
     ///
     /// # Returns
     /// The path.
-    pub fn cubic_to(mut self, point_1: Point, point_2: Point, end_point: Point) -> Self {
+    pub fn cubic_to<T: Into<Point>>(mut self, point_1: T, point_2: T, end_point: T) -> Self {
         self.inject_move_to_if_needed();
-        self.verbs
-            .push(PathVerb::CubicTo(point_1, point_2, end_point));
+
+        self.verbs.push(PathVerb::CubicTo(
+            point_1.into(),
+            point_2.into(),
+            end_point.into(),
+        ));
         self
     }
 
