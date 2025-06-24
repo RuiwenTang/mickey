@@ -1,0 +1,2 @@
+[alias]
+run-wasm = "run --package run-wasm --"

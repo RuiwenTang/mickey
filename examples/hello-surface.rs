@@ -28,24 +28,6 @@ impl common::Renderer for HelloSurface {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) {
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        let p = format!("{}/examples/assets/mandrill.png", manifest_dir);
-
-        let img = ImageReader::open(p).unwrap().decode().unwrap().into_rgba8();
-
-        let image = Rc::new(Image::create_image(
-            img.as_raw(),
-            &ImageInfo {
-                width: img.width(),
-                height: img.height(),
-                format: ImageFormat::RGBA8888,
-                premultiplied: true,
-            },
-            img.width() * 4,
-            device,
-            queue,
-        ));
-
         let mut recorder = PictureRecorder::new();
 
         let mut paint = Paint::default().with_color(Color::red());
@@ -136,16 +118,36 @@ impl common::Renderer for HelloSurface {
             recorder.save();
             recorder.translate(100.0, 400.0);
             let mut paint = Paint::default();
-            paint.set_color(RadialGradient::new(Point::new(220.0, 350.0), 150.0, vec![
-                Color::white(),
-                Color::black(),
-            ]));
+            paint.set_color(RadialGradient::new(
+                Point::new(220.0, 350.0),
+                150.0,
+                vec![Color::white(), Color::black()],
+            ));
 
             recorder.draw_circle((220.0, 350.0), 100.0, &paint);
             recorder.restore();
         }
 
+        // web platform not support read image from file, so we skip this test in web platform
+        #[cfg(not(target_arch = "wasm32"))]
         {
+            let manifest_dir = env!("CARGO_MANIFEST_DIR");
+            let p = format!("{}/examples/assets/mandrill.png", manifest_dir);
+
+            let img = ImageReader::open(p).unwrap().decode().unwrap().into_rgba8();
+
+            let image = Rc::new(Image::create_image(
+                img.as_raw(),
+                &ImageInfo {
+                    width: img.width(),
+                    height: img.height(),
+                    format: ImageFormat::RGBA8888,
+                    premultiplied: true,
+                },
+                img.width() * 4,
+                device,
+                queue,
+            ));
             recorder.save();
             recorder.translate(500.0, 400.0);
             let mut paint = Paint::default();
@@ -176,5 +178,15 @@ impl common::Renderer for HelloSurface {
 }
 
 fn main() {
-    App::run("Hello world", 800, 800, HelloSurface::new());
+    #[cfg(not(target_arch = "wasm32"))]
+    futures::executor::block_on(App::run("Hello world", 800, 800, HelloSurface::new()));
+
+    #[cfg(target_arch = "wasm32")]
+    let _ = wasm_bindgen_futures::future_to_promise(async {
+        use wasm_bindgen_futures::wasm_bindgen::JsValue;
+
+        App::run("Hello world", 800, 800, HelloSurface::new()).await;
+
+        Ok(JsValue::TRUE)
+    });
 }
