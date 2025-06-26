@@ -3,6 +3,7 @@ mod common;
 use std::rc::Rc;
 
 use common::App;
+use common::Renderer;
 
 use image::ImageReader;
 use mickey::*;
@@ -21,7 +22,7 @@ impl HelloSurface {
     }
 }
 
-impl common::Renderer for HelloSurface {
+impl Renderer for HelloSurface {
     fn on_init(
         &mut self,
         _format: wgpu::TextureFormat,
@@ -178,15 +179,5 @@ impl common::Renderer for HelloSurface {
 }
 
 fn main() {
-    #[cfg(not(target_arch = "wasm32"))]
-    futures::executor::block_on(App::run("Hello world", 800, 800, HelloSurface::new()));
-
-    #[cfg(target_arch = "wasm32")]
-    let _ = wasm_bindgen_futures::future_to_promise(async {
-        use wasm_bindgen_futures::wasm_bindgen::JsValue;
-
-        App::run("Hello world", 800, 800, HelloSurface::new()).await;
-
-        Ok(JsValue::TRUE)
-    });
+    App::start("Hello world", 800, 800, HelloSurface::new());
 }

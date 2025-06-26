@@ -36,8 +36,25 @@ pub struct App<'a, T: Renderer> {
     renderer: T,
 }
 
-impl<'a, T: Renderer> App<'a, T> {
-    pub async fn run(title: &'static str, width: u32, height: u32, renderer: T) {
+impl<'a, T: Renderer + 'static> App<'a, T> {
+    pub fn start(title: &'static str, width: u32, height: u32, renderer: T) {
+        #[cfg(not(target_arch = "wasm32"))]
+        futures::executor::block_on(App::run(title, width, height, renderer));
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            use wasm_bindgen_futures::wasm_bindgen::JsValue;
+            use web_sys::wasm_bindgen::prelude::Closure;
+            let _ = wasm_bindgen_futures::future_to_promise(async move {
+                let render = renderer;
+                App::run(title, width, height, render).await;
+
+                Ok(JsValue::TRUE)
+            });
+        }
+    }
+
+    async fn run(title: &'static str, width: u32, height: u32, renderer: T) {
         #[cfg(target_arch = "wasm32")]
         console_error_panic_hook::set_once();
 
@@ -103,7 +120,7 @@ impl<'a, T: Renderer> App<'a, T> {
     }
 }
 
-impl<'a, T: Renderer> ApplicationHandler for App<'a, T> {
+impl<'a, T: Renderer + 'static> ApplicationHandler for App<'a, T> {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         self.window = Some(event_loop.create_window(self.wa.clone()).unwrap());
 
